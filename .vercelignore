@@ -1,0 +1,8 @@
+.pglite
+.env*
+!.env.example
+node_modules
+.next
+*.tsbuildinfo
+private/
+data/

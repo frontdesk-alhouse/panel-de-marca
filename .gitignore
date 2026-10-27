@@ -1,0 +1,19 @@
+node_modules/
+.next/
+out/
+.env*
+!.env.example
+.pglite/
+.pglite.lock
+*.tsbuildinfo
+next-env.d.ts
+.vercel
+.DS_Store
+
+# Datos y configuración privados (nunca al repo)
+data/
+private/
+*.pem
+
+# Tipografías con licencia de la marca (next.config.ts las usa si existen)
+src/app/fonts/brand/

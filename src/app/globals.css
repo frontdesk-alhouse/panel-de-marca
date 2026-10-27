@@ -1,0 +1,144 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * Los tres colores de estado (bien / mejorable / atender) se validaron con el
+ * validador de dataviz contra cada superficie y siempre van con ícono y texto.
+ */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-body-face);
+  --font-display: var(--font-display-face);
+  --font-mono: var(--font-fragment-mono);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-good: var(--good);
+  --color-warn: var(--warn);
+  --color-bad: var(--bad);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+}
+
+/* Estilo del panel: zinc + gradiente cálido de shader como marco. */
+:root {
+  --radius: 0.75rem;
+  --frame-1: rgb(242 178 120);
+  --frame-2: rgb(140 160 178);
+  --frame-3: rgb(250 205 140);
+  --frame-base: rgb(228 196 160);
+  --frame-veil: transparent;
+  --background: #fafafa;
+  --foreground: #09090b;
+  --card: #f4f4f5;
+  --card-foreground: #09090b;
+  --popover: #ffffff;
+  --popover-foreground: #09090b;
+  --primary: #09090b;
+  --primary-foreground: #fafafa;
+  --secondary: #e4e4e7;
+  --secondary-foreground: #09090b;
+  --muted: #ebebeb;
+  --muted-foreground: #63636b;
+  --accent: #e4e4e7;
+  --accent-foreground: #09090b;
+  --destructive: #9e3a26;
+  --border: #e4e4e7;
+  --input: #d4d4d8;
+  --ring: #09090b;
+  --good: #13907f;
+  --warn: #a87b1f;
+  --bad: #9e3a26;
+  /* Serie categórica validada (dataviz): un color fijo por canal. */
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --series-4: #eda100;
+  --series-5: #e87ba4;
+  --series-6: #008300;
+  --series-7: #7c5cd6;
+  --series-8: #0f8fa3;
+  --series-9: #b4511f;
+  --series-10: #5f7a1f;
+  --series-11: #9a4a8f;
+  --series-other: #a1a1aa;
+  --grid: #e4e4e7;
+}
+
+.dark {
+  --frame-veil: rgb(9 9 11 / 0.72);
+  --background: #18181b;
+  --foreground: #fafafa;
+  --card: #27272a;
+  --card-foreground: #fafafa;
+  --popover: #27272a;
+  --popover-foreground: #fafafa;
+  --primary: #fafafa;
+  --primary-foreground: #09090b;
+  --secondary: #3f3f46;
+  --secondary-foreground: #fafafa;
+  --muted: #303034;
+  --muted-foreground: #a1a1aa;
+  --accent: #3f3f46;
+  --accent-foreground: #fafafa;
+  --destructive: #e8606e;
+  --border: #3f3f46;
+  --input: #52525b;
+  --ring: #fafafa;
+  --good: #1f9e8a;
+  --warn: #ad8619;
+  --bad: #e8606e;
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --series-4: #c98500;
+  --series-5: #d55181;
+  --series-6: #008300;
+  --series-7: #9a80ec;
+  --series-8: #2bb3c7;
+  --series-9: #e07a43;
+  --series-10: #8fb046;
+  --series-11: #c77bbd;
+  --series-other: #71717a;
+  --grid: #3f3f46;
+}
+
+/* Gradiente de shader del sitio en versión estática: no compite con los datos. */
+.shader-frame {
+  background:
+    linear-gradient(var(--frame-veil), var(--frame-veil)),
+    radial-gradient(60% 70% at 12% 18%, var(--frame-1) 0%, transparent 62%),
+    radial-gradient(55% 65% at 88% 22%, color-mix(in srgb, var(--frame-2) 80%, transparent) 0%, transparent 64%),
+    radial-gradient(75% 70% at 50% 105%, var(--frame-3) 0%, transparent 70%),
+    var(--frame-base);
+  background-attachment: fixed;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply text-foreground font-sans;
+    font-feature-settings: "tnum" 1;
+  }
+}
