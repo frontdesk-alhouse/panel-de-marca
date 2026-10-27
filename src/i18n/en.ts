@@ -267,6 +267,7 @@ const en: Messages = {
       title: "What's your website?",
       intro: "I read it to learn who you are: services, city, prices and how you present yourself. I only read public pages and respect the ones your site asks not to read.",
       domain: "Domain",
+      domainEx: "yoursite.com",
       read: "Read my site",
       reread: "Read again",
       reading: "Reading your site… usually under 20 seconds.",

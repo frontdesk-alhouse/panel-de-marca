@@ -28,7 +28,7 @@ export function SiteStep({ initialDomain, site, onRead, onNext }: { initialDomai
     <div className="space-y-8">
       <StepHeader eyebrow={c.eyebrow} title={c.title}><p>{c.intro}</p></StepHeader>
       <form className="flex max-w-xl flex-col gap-3 sm:flex-row sm:items-end" onSubmit={(e) => { e.preventDefault(); read(); }}>
-        <div className="flex-1"><TextField label={c.domain} value={domain} onChange={setDomain} placeholder="tusitio.com" invalid={Boolean(error)} /></div>
+        <div className="flex-1"><TextField label={c.domain} value={domain} onChange={setDomain} placeholder={c.domainEx} invalid={Boolean(error)} /></div>
         <Button type="submit" pending={pending} disabled={!domain.trim()}><Globe className="h-4 w-4" aria-hidden />{site ? c.reread : c.read}</Button>
       </form>
       {pending && <p className="text-sm text-muted-foreground" role="status">{c.reading}</p>}

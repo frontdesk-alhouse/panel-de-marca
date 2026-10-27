@@ -23,3 +23,17 @@ test("filtra otros países, empleos y temas ajenos", () => {
 test("título legible desde la URL", () => {
   assert.equal(titleFromUrl("https://estudio.example/blog/5-fuerzas-de-porter/"), "5 fuerzas de porter");
 });
+
+test("marca nueva sin lista propia: descarta ideas de otros países hispanohablantes, no las del suyo", async () => {
+  const { ideaFilters } = await import("./collect");
+  const { WorkspaceSchema } = await import("@/lib/workspace/schema");
+  const { EXAMPLE_WORKSPACE } = await import("@/lib/workspace/example");
+  const w = WorkspaceSchema.parse({ ...EXAMPLE_WORKSPACE, content: { ...EXAMPLE_WORKSPACE.content, excludePatterns: [] } });
+  const mx = ideaFilters(w.content, "es-MX").exclude;
+  assert.ok(mx?.test("mejores churros madrid"));
+  assert.ok(mx?.test("chocolate caliente en bogotá"));
+  assert.ok(!mx?.test("churros en guadalajara"));
+  const es = ideaFilters({ ...w.content }, "es-ES").exclude;
+  assert.ok(!es?.test("churros madrid") && es?.test("churros en méxico"));
+  assert.equal(ideaFilters({ ...w.content }, "en-US").exclude, null);
+});

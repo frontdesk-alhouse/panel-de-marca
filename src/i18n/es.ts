@@ -269,6 +269,7 @@ const es = {
       title: "¿Cuál es tu sitio web?",
       intro: "Lo leo para saber quién eres: servicios, ciudad, precios y cómo te presentas. Solo leo páginas públicas y respeto las que tu sitio pide no leer.",
       domain: "Dominio",
+      domainEx: "tusitio.com",
       read: "Leer mi sitio",
       reread: "Volver a leer",
       reading: "Leyendo tu sitio… suele tardar menos de 20 segundos.",

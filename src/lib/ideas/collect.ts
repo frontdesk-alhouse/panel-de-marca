@@ -3,6 +3,7 @@ import { competitors } from "@/lib/scorecard/config";
 import { harvest, isApifyConfigured } from "@/lib/apify";
 import { sitemapUrls } from "@/sources/competitors";
 import { IDEA_PREFIXES } from "./config";
+import { defaultExcludePatterns } from "./regions";
 import type { Content } from "@/lib/workspace/schema";
 
 export interface IdeaHit {
@@ -27,13 +28,15 @@ const JOBS = /\b(vacante|vacantes|trabajo|empleo|sueldo|salario|pr[aá]cticas|in
  * relevantes = (a|b|c), excluidos = \b(a|b|c). Sin \b al final: la tilde (perú)
  * no cuenta como letra para \b.
  */
+const excludeRegex = (patterns: string[]) => (patterns.length ? new RegExp(`\\b(${patterns.join("|")})`, "i") : null);
+
 const filterCache = new WeakMap<Content, { relevant: RegExp | null; exclude: RegExp | null }>();
-export function ideaFilters(content: Content = ws().content) {
+export function ideaFilters(content: Content = ws().content, locale: string = localeSettings().locale) {
   let f = filterCache.get(content);
   if (!f) {
     f = {
       relevant: content.relevantPatterns.length ? new RegExp(`(${content.relevantPatterns.join("|")})`, "i") : null,
-      exclude: content.excludePatterns.length ? new RegExp(`\\b(${content.excludePatterns.join("|")})`, "i") : null,
+      exclude: excludeRegex(content.excludePatterns.length ? content.excludePatterns : defaultExcludePatterns(locale)),
     };
     filterCache.set(content, f);
   }

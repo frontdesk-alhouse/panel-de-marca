@@ -2,6 +2,7 @@
 
 import { useT } from "@/i18n/client";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { EMPTY_BRIEFING, formFromSite, type BrandForm } from "@/lib/briefing/brand-form";
 import type { Draft } from "@/lib/briefing/draft";
@@ -31,6 +32,8 @@ export interface SetupInitial {
 /** La configuración inicial: un paso a la vez, con el avance en la URL (?paso=). */
 export function SetupWizard({ initial }: { initial: SetupInitial }) {
   const t = useT();
+  // Al guardar la marca puede cambiar el idioma del panel: refresh trae los textos nuevos.
+  const router = useRouter();
   const [step, setStep] = useState<StepId>(initial.step);
   const [site, setSite] = useState<SiteSummary | null>(null);
   const [briefing, setBriefing] = useState<Briefing>(initial.form?.briefing ?? EMPTY_BRIEFING);
@@ -100,7 +103,7 @@ export function SetupWizard({ initial }: { initial: SetupInitial }) {
                 onChange={(b, k) => { setBriefing(b); setKnown(k); if (form) setForm({ ...form, briefing: b }); }} onDraft={onDraft} onBack={() => go("sitio")} />
             : <SiteStep initialDomain={form?.domain ?? ""} site={null} onRead={setSite} onNext={() => go("briefing")} />
         )}
-        {step === "marca" && form && <BrandStep form={form} onChange={setForm} drafted={drafted} missingFromDraft={missing} onSaved={() => go("mercado")} onBack={() => go("briefing")} />}
+        {step === "marca" && form && <BrandStep form={form} onChange={setForm} drafted={drafted} missingFromDraft={missing} onSaved={() => { router.refresh(); go("mercado"); }} onBack={() => go("briefing")} />}
         {step === "mercado" && form && (
           <MarketStep form={form} onChange={setForm} competitors={competitors} onCompetitors={setCompetitors} knownCompetitors={known}
             hasApify={initial.hasApify} onSaved={() => go("conexiones")} onBack={() => go("marca")} />
