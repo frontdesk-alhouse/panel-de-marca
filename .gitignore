@@ -17,3 +17,8 @@ private/
 
 # Tipografías con licencia de la marca (next.config.ts las usa si existen)
 src/app/fonts/brand/
+
+# Pruebas de punta a punta
+/test-results/
+/playwright-report/
+/blob-report/

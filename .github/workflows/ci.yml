@@ -19,6 +19,13 @@ jobs:
       - run: npm run typecheck
       - run: npm run lint
       - run: npm test
+      # El esquema y las migraciones deben ir juntos: si alguien cambia src/db/schema.ts sin
+      # generar su migración, las instalaciones locales quedarían con otra base.
+      - name: Esquema y migraciones al día
+        run: |
+          npx drizzle-kit generate --name ci-check
+          git diff --exit-code -- drizzle/ || (echo "::error::Falta generar la migración: npm run db:generate" && exit 1)
+          test -z "$(git status --porcelain -- drizzle/)" || (echo "::error::Falta generar la migración: npm run db:generate" && git status --porcelain -- drizzle/ && exit 1)
 
   secrets:
     runs-on: ubuntu-latest
@@ -29,3 +36,25 @@ jobs:
       - uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  e2e:
+    # Panel real en modo local (base nueva, sin llaves) recorrido con Playwright.
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7

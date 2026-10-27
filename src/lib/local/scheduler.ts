@@ -1,4 +1,4 @@
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { syncRuns } from "@/db/schema";
 import { defaultRange, runSync } from "@/lib/sync";
@@ -35,6 +35,23 @@ async function readStates(): Promise<Map<string, JobState>> {
     });
   }
   return states;
+}
+
+/**
+ * El historial de corridas solo sirve para saber qué toca y mostrar el estado: se guardan
+ * 90 días (el programador inserta varias filas al día y la base vive en la computadora).
+ */
+const KEEP_RUNS_DAYS = 90;
+export async function purgeOldRuns(): Promise<void> {
+  const db = await getDb();
+  const cutoff = new Date(Date.now() - KEEP_RUNS_DAYS * 86_400_000);
+  // Siempre se conserva la última corrida y la última buena de cada fuente, aunque sean viejas:
+  // sin ellas, una fuente que dejó de correr parecería «nunca corrió».
+  await db.execute(sql`
+    delete from sync_runs
+    where started_at < ${cutoff}
+      and id not in (select distinct on (source) id from sync_runs order by source, started_at desc)
+      and id not in (select distinct on (source) id from sync_runs where status = 'ok' order by source, started_at desc)`);
 }
 
 /** Puede correr con lo que hay configurado; si no, ni se intenta (no llena sync_runs de errores). */
@@ -83,6 +100,7 @@ export async function tick(now = () => new Date()): Promise<string[]> {
   const ran: string[] = [];
   try {
     if (!(await loadWorkspace())) return ran; // sin marca configurada no hay nada que medir
+    await purgeOldRuns().catch((err) => console.warn("[programador] no se pudo limpiar el historial:", err));
     const states = await readStates();
     const { timeZone } = localeSettings();
     for (const job of JOBS) {

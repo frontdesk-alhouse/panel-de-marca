@@ -81,6 +81,7 @@ npm start          # rebuilds if there's new code; the database updates itself
 
 - Next.js 16, React 19, Tailwind 4, Drizzle (PGlite locally; Postgres in the cloud), zod.
 - `npm run dev` · `npm test` · `npm run typecheck` · `npm run lint`.
+- `npm run test:e2e`: walks through the setup and the panel in a real browser (Playwright) with a fresh database and no keys. First time: `npx playwright install chromium`.
 - Schema changes: edit `src/db/schema.ts` and run `npm run db:generate`; the migration applies itself on open.
 - **Cloud mode (optional):** the same code runs on Vercel with Postgres (Neon) and Google login with an email allowlist. See `.env.example` («Solo modo nube» section); the brand setup is loaded with `scripts/import-workspace.ts`.
 - Translations: `src/i18n/es.ts` is the source; `en.ts` shares its type and won't compile if anything is missing.

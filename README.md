@@ -81,6 +81,7 @@ npm start          # reconstruye si hay código nuevo; la base se actualiza sola
 
 - Next.js 16, React 19, Tailwind 4, Drizzle (PGlite en local; Postgres en la nube), zod.
 - `npm run dev` · `npm test` · `npm run typecheck` · `npm run lint`.
+- `npm run test:e2e`: recorre la configuración inicial y el panel en un navegador real (Playwright) con una base nueva y sin llaves. La primera vez: `npx playwright install chromium`.
 - Cambios al esquema: edita `src/db/schema.ts` y corre `npm run db:generate`; la migración se aplica sola al abrir.
 - **Modo nube (opcional):** el mismo código corre en Vercel con Postgres (Neon) y login de Google con lista de correos. Ver `.env.example` (sección «Solo modo nube»); la configuración de la marca se carga con `scripts/import-workspace.ts`.
 - Traducciones: `src/i18n/es.ts` es la fuente; `en.ts` comparte el tipo y no compila si le falta algo.

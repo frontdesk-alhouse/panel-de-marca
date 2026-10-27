@@ -1,0 +1,60 @@
+import { expect, test } from "@playwright/test";
+
+/** El panel ya configurado (lo dejó 02): menú, secciones sin conexión, Ajustes, competencia y CRM. */
+test.describe("panel configurado", () => {
+  test("menú local: con Ajustes, sin Google Ads hasta conectarlo, sin «Salir»", async ({ page }) => {
+    await page.goto("/");
+    const nav = page.getByRole("navigation", { name: "Secciones" }).first();
+    await expect(nav.getByRole("link", { name: "Ajustes" })).toBeVisible();
+    await expect(nav.getByRole("link", { name: "Google Ads" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Salir" })).toHaveCount(0);
+  });
+
+  test("una sección sin conexión dice qué conectar y lleva a Ajustes", async ({ page }) => {
+    await page.goto("/trafico");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Tráfico y audiencia");
+    await expect(page.getByRole("heading", { name: "Conecta Google Analytics y Search Console" })).toBeVisible();
+    await page.getByRole("link", { name: "Conectar" }).click();
+    await expect(page).toHaveURL(/\/ajustes#google/);
+    await expect(page.locator("section#google").getByLabel("ID de cliente OAuth")).toBeVisible();
+  });
+
+  test("las pestañas de Ajustes se usan con el teclado", async ({ page }) => {
+    await page.goto("/ajustes");
+    const conexiones = page.getByRole("tab", { name: "Conexiones" });
+    await conexiones.focus();
+    await page.keyboard.press("ArrowRight");
+    const marca = page.getByRole("tab", { name: "Tu marca" });
+    await expect(marca).toHaveAttribute("aria-selected", "true");
+    await expect(marca).toBeFocused();
+    await page.keyboard.press("End");
+    await expect(page.getByRole("tab", { name: "Búsquedas y competencia" })).toHaveAttribute("aria-selected", "true");
+  });
+
+  test("agregar un competidor desde Ajustes y que se quede guardado", async ({ page }) => {
+    await page.goto("/ajustes?tab=mercado");
+    await page.getByRole("textbox", { name: "Agregar competidor" }).fill("example.net");
+    await page.getByRole("button", { name: "Agregar", exact: true }).first().click();
+    await expect(page.getByRole("list", { name: "Competidores" })).toContainText("example.net", { timeout: 60_000 });
+    await page.getByRole("button", { name: "Guardar", exact: true }).click();
+    await expect(page.getByRole("button", { name: "Guardar", exact: true })).toBeEnabled({ timeout: 30_000 });
+    await page.goto("/ajustes?tab=mercado");
+    await expect(page.getByRole("list", { name: "Competidores" })).toContainText("example.net");
+    await expect(page.getByRole("list", { name: "Competidores" })).toContainText("example.org");
+  });
+
+  test("el CRM guarda un prospecto sin ninguna conexión", async ({ page }) => {
+    await page.goto("/crm/nuevo");
+    await page.getByRole("textbox", { name: "Empresa", exact: true }).fill("Prospecto E2E");
+    await page.getByRole("textbox", { name: "Contacto", exact: true }).fill("Contacto E2E");
+    await page.getByRole("button", { name: "Crear prospecto" }).click();
+    await expect(page).toHaveURL(/\/crm\/\d+$/);
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Prospecto E2E");
+  });
+
+  test("rehacer la configuración se ve a pantalla completa, sin el menú del panel", async ({ page }) => {
+    await page.goto("/setup?paso=sitio");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("¿Cuál es tu sitio web?");
+    await expect(page.getByRole("navigation", { name: "Secciones" })).toHaveCount(0);
+  });
+});

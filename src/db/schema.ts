@@ -18,6 +18,8 @@ export const metricDaily = pgTable(
   (t) => [
     uniqueIndex("metric_daily_uq").on(t.source, t.metric, t.dimKey, t.date),
     index("metric_daily_source_date").on(t.source, t.date),
+    // Ventanas de fechas sin filtrar por fuente (sumsForWindow, latestUpTo).
+    index("metric_daily_date").on(t.date),
   ],
 );
 
@@ -30,7 +32,10 @@ export const syncRuns = pgTable("sync_runs", {
   rows: integer("rows").notNull().default(0),
   error: text("error"),
   trigger: text("trigger", { enum: ["cron", "manual", "script"] }).notNull(),
-});
+}, (t) => [
+  // Última corrida por fuente (programador, /api/sync/status, limpieza de corridas cortadas).
+  index("sync_runs_source_started").on(t.source, t.startedAt.desc()),
+]);
 
 export const LEAD_STAGES = ["nuevo", "calificado", "propuesta", "cerrado", "perdido"] as const;
 export const LEAD_CHANNELS = ["organico", "ads", "meta", "directo", "referido", "otro"] as const;
@@ -88,7 +93,11 @@ export const leads = pgTable("leads", {
   proposalAt: timestamp("proposal_at", { withTimezone: true }),
   closedAt: timestamp("closed_at", { withTimezone: true }),
   meta: jsonb("meta").$type<Record<string, unknown>>(),
-});
+}, (t) => [
+  // Ventanas por fecha de alta (calificación, negocio) y filtro por etapa (CRM).
+  index("leads_created").on(t.createdAt),
+  index("leads_stage").on(t.stage),
+]);
 
 export const ACTIVITY_TYPES = ["llamada", "reunion", "whatsapp", "correo", "propuesta", "nota"] as const;
 
@@ -130,7 +139,11 @@ export const meetingProposals = pgTable("meeting_proposals", {
   reviewedBy: text("reviewed_by"),
   reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (t) => [
+  // Bandeja de reuniones pendientes y búsqueda por prospecto.
+  index("meeting_proposals_status").on(t.status, t.happenedAt),
+  index("meeting_proposals_lead").on(t.leadId),
+]);
 
 export const analyses = pgTable("analyses", {
   id: serial("id").primaryKey(),
@@ -142,7 +155,10 @@ export const analyses = pgTable("analyses", {
   model: text("model").notNull(),
   usage: jsonb("usage"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (t) => [
+  // Último análisis o plan por tipo.
+  index("analyses_kind_created").on(t.kind, t.createdAt.desc()),
+]);
 
 /** Snapshot de la calificación para verla en el tiempo; el cálculo vivo sale de metric_daily. */
 export const scores = pgTable("scores", {

@@ -1,8 +1,8 @@
 "use client";
 
-import { useT } from "@/i18n/client";
+import { I18nProvider, useLang } from "@/i18n/client";
+import { messages, type Lang } from "@/i18n";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { EMPTY_BRIEFING, formFromSite, type BrandForm } from "@/lib/briefing/brand-form";
 import type { Draft } from "@/lib/briefing/draft";
@@ -31,9 +31,13 @@ export interface SetupInitial {
 
 /** La configuración inicial: un paso a la vez, con el avance en la URL (?paso=). */
 export function SetupWizard({ initial }: { initial: SetupInitial }) {
-  const t = useT();
-  // Al guardar la marca puede cambiar el idioma del panel: refresh trae los textos nuevos.
-  const router = useRouter();
+  // Al guardar la marca puede cambiar el idioma del panel. Se cambia aquí, en el navegador:
+  // un router.refresh() volvería a montar el asistente y perdería lo que no está guardado
+  // (p. ej. la competencia escrita en el briefing).
+  const outerLang = useLang();
+  const [uiLang, setUiLang] = useState<Lang | null>(null);
+  const lang = uiLang ?? outerLang;
+  const t = messages(lang);
   const [step, setStep] = useState<StepId>(initial.step);
   const [site, setSite] = useState<SiteSummary | null>(null);
   const [briefing, setBriefing] = useState<Briefing>(initial.form?.briefing ?? EMPTY_BRIEFING);
@@ -79,6 +83,7 @@ export function SetupWizard({ initial }: { initial: SetupInitial }) {
   };
 
   return (
+    <I18nProvider lang={lang}>
     <div className="min-h-[calc(100dvh-1rem)] rounded-[20px] bg-background shadow-[0_1px_0_rgb(255_255_255/0.6)_inset] md:min-h-[calc(100dvh-1.5rem)]">
     <div className="mx-auto grid max-w-6xl gap-10 px-4 py-10 md:px-8 lg:grid-cols-[200px_1fr] lg:py-16">
       <nav aria-label={t.setup.stepsNav} className="lg:sticky lg:top-16 lg:self-start">
@@ -108,7 +113,7 @@ export function SetupWizard({ initial }: { initial: SetupInitial }) {
                 onChange={(b, k) => { setBriefing(b); if (k !== known) setAutoAddPending(true); setKnown(k); if (form) setForm({ ...form, briefing: b }); }} onDraft={onDraft} onBack={() => go("sitio")} />
             : <SiteStep initialDomain={form?.domain ?? ""} site={null} onRead={setSite} onNext={() => go("briefing")} />
         )}
-        {step === "marca" && form && <BrandStep form={form} onChange={setForm} drafted={drafted} missingFromDraft={missing} onSaved={() => { router.refresh(); go("mercado"); }} onBack={() => go("briefing")} />}
+        {step === "marca" && form && <BrandStep form={form} onChange={setForm} drafted={drafted} missingFromDraft={missing} onSaved={() => { setUiLang(form.language); go("mercado"); }} onBack={() => go("briefing")} />}
         {step === "mercado" && form && (
           <MarketStep form={form} onChange={setForm} competitors={competitors} onCompetitors={setCompetitors} knownCompetitors={known}
             autoAddPending={autoAddPending} onAutoAdded={() => setAutoAddPending(false)}
@@ -119,5 +124,6 @@ export function SetupWizard({ initial }: { initial: SetupInitial }) {
       </main>
     </div>
     </div>
+    </I18nProvider>
   );
 }
