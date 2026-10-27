@@ -63,7 +63,7 @@ export const INTEGRATIONS: readonly Integration[] = [
     fields: [
       { key: "GOOGLE_CLIENT_ID", secret: false, placeholder: "….apps.googleusercontent.com" },
       { key: "GOOGLE_CLIENT_SECRET", secret: true, placeholder: "GOCSPX-…" },
-      { key: "GA4_PROPERTY_ID", secret: false, placeholder: "123456789", optional: true },
+      { key: "GA4_PROPERTY_ID", secret: false, placeholder: "123456789", optional: true }, // gitleaks:allow (ID de ejemplo, no es secreto)
       { key: "GSC_SITE_URL", secret: false, placeholder: "sc-domain:example.com", optional: true },
     ],
     steps: [
