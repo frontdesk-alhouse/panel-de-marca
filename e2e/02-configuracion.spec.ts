@@ -6,6 +6,8 @@ import { expect, test } from "@playwright/test";
  * Depende de 01 (base vacía) y deja la marca lista para 03.
  */
 test("configuración inicial de punta a punta sin llaves", async ({ page }) => {
+  // Varias lecturas reales de internet (example.com, Google): presupuesto amplio.
+  test.setTimeout(300_000);
   await page.goto("/");
   await expect(page).toHaveURL(/\/setup/);
 
@@ -52,7 +54,8 @@ test("configuración inicial de punta a punta sin llaves", async ({ page }) => {
   await expect(
     page.getByRole("list", { name: "Búsquedas sugeridas" })
       .or(page.getByText("Sin más sugerencias por ahora."))
-      .or(page.getByRole("alert")),
+      .or(page.getByRole("alert"))
+      .first(),
   ).toBeVisible({ timeout: 30_000 });
   await page.getByRole("button", { name: "Guardar y continuar" }).click();
 

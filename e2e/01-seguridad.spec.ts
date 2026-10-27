@@ -19,9 +19,11 @@ test.describe("modo local · seguridad", () => {
     expect(res.headers().location).toMatch(/^(http:\/\/127\.0\.0\.1:\d+)?\/$/);
   });
 
-  test("rechaza un Host ajeno (DNS rebinding)", async ({ request }) => {
-    const res = await request.get("/", { headers: { Host: "attacker.example" }, maxRedirects: 0 });
-    expect(res.status()).toBe(403);
+  test("rechaza un Host ajeno (DNS rebinding) y acepta el propio", async ({ request }) => {
+    const ajeno = await request.get("/setup", { headers: { Host: "attacker.example" }, maxRedirects: 0 });
+    expect(ajeno.status()).toBe(403);
+    // Control: la misma página con el Host de esta computadora sí abre.
+    expect((await request.get("/setup", { maxRedirects: 0 })).status()).toBe(200);
   });
 
   test("otra página del navegador no puede escribir en el panel", async ({ request }) => {
@@ -42,6 +44,15 @@ test.describe("modo local · seguridad", () => {
     expect(h["x-powered-by"]).toBeUndefined();
     // HSTS solo en Vercel: aquí el panel corre en http.
     expect(h["strict-transport-security"]).toBeUndefined();
+  });
+
+  test("un navegador en inglés ve la configuración en inglés", async ({ browser }) => {
+    const context = await browser.newContext({ locale: "en-US", extraHTTPHeaders: { "Accept-Language": "en-US,en;q=0.9" } });
+    const page = await context.newPage();
+    await page.goto("/setup");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Your marketing panel, on your computer");
+    await expect(page.locator("html")).toHaveAttribute("lang", "en");
+    await context.close();
   });
 
   test("un regreso de Google falso no hace nada", async ({ request }) => {

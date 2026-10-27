@@ -12,7 +12,8 @@ export default defineConfig({
   testDir: "e2e",
   fullyParallel: false,
   workers: 1,
-  retries: process.env.CI ? 1 : 0,
+  // Sin reintentos: las pruebas comparten la base y un reintento a medias falla por otra razón.
+  retries: 0,
   timeout: 120_000,
   expect: { timeout: 20_000 },
   reporter: process.env.CI ? [["github"], ["html", { open: "never" }]] : [["list"], ["html", { open: "never" }]],
