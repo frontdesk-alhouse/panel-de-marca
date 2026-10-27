@@ -55,33 +55,46 @@ export interface ApprovalInput {
 /** Aprobar: la reunión queda como actividad «Reunión» y lo aprendido se suma a la ficha (sin borrar lo que había). */
 export async function approveProposal(id: number, input: ApprovalInput, reviewer: string): Promise<boolean> {
   const db = await getDb();
-  const [row] = await db.select().from(meetingProposals).where(and(eq(meetingProposals.id, id), eq(meetingProposals.status, "pendiente")));
+  // Se reclama antes de escribir nada: dos clics seguidos ya no duplican la actividad.
+  const [row] = await db.update(meetingProposals)
+    .set({ status: "aprobada", reviewedBy: reviewer, reviewedAt: new Date() })
+    .where(and(eq(meetingProposals.id, id), eq(meetingProposals.status, "pendiente")))
+    .returning();
   if (!row) return false;
-  const p = ProposalSchema.parse(row.proposal);
-  const day = row.happenedAt.toISOString().slice(0, 10);
-  const leadId = input.leadId === "nuevo"
-    ? await createLead(leadInput.parse({
-        company: input.company ?? p.newLead?.company ?? "", contactName: input.contactName ?? p.newLead?.contactName ?? "",
-        industry: p.newLead?.industry ?? "", channel: "otro", stage: "nuevo",
-      }), reviewer)
-    : input.leadId;
-  const extra = [
-    p.objections.length ? `Objeciones: ${p.objections.join("; ")}` : "",
-    p.risks.length ? `Riesgos: ${p.risks.join("; ")}` : "",
-    row.shareLink ? `Nota en Wispr: ${row.shareLink}` : "",
-  ].filter(Boolean).join("\n");
-  const ok = await addActivity(leadId, {
-    type: "reunion", happenedAt: day, summary: [input.summary, extra].filter(Boolean).join("\n\n").slice(0, 4000),
-    result: p.interest ? `Interés ${p.interest}` : null, withWhom: p.withWhom ?? null,
-    nextStep: input.nextStep ?? null, nextStepAt: input.nextStep ? input.nextStepAt ?? null : null,
-  }, reviewer);
-  if (!ok) return false;
-  const [lead] = await db.select({ needs: leads.needs, personalNotes: leads.personalNotes }).from(leads).where(eq(leads.id, leadId));
-  await db.update(leads).set({
-    needs: appendDated(lead?.needs ?? null, input.needs, day), personalNotes: appendDated(lead?.personalNotes ?? null, input.personalNotes, day), updatedAt: new Date(),
-  }).where(eq(leads.id, leadId));
-  await db.update(meetingProposals).set({ status: "aprobada", leadId, reviewedBy: reviewer, reviewedAt: new Date() }).where(eq(meetingProposals.id, id));
-  return true;
+  const release = () => db.update(meetingProposals).set({ status: "pendiente", reviewedBy: null, reviewedAt: null }).where(eq(meetingProposals.id, id));
+  try {
+    const p = ProposalSchema.parse(row.proposal);
+    const day = row.happenedAt.toISOString().slice(0, 10);
+    const leadId = input.leadId === "nuevo"
+      ? await createLead(leadInput.parse({
+          company: input.company ?? p.newLead?.company ?? "", contactName: input.contactName ?? p.newLead?.contactName ?? "",
+          industry: p.newLead?.industry ?? "", channel: "otro", stage: "nuevo",
+        }), reviewer)
+      : input.leadId;
+    const extra = [
+      p.objections.length ? `Objeciones: ${p.objections.join("; ")}` : "",
+      p.risks.length ? `Riesgos: ${p.risks.join("; ")}` : "",
+      row.shareLink ? `Nota en Wispr: ${row.shareLink}` : "",
+    ].filter(Boolean).join("\n");
+    const ok = await addActivity(leadId, {
+      type: "reunion", happenedAt: day, summary: [input.summary, extra].filter(Boolean).join("\n\n").slice(0, 4000),
+      result: p.interest ? `Interés ${p.interest}` : null, withWhom: p.withWhom ?? null,
+      nextStep: input.nextStep ?? null, nextStepAt: input.nextStep ? input.nextStepAt ?? null : null,
+    }, reviewer);
+    if (!ok) {
+      await release();
+      return false;
+    }
+    const [lead] = await db.select({ needs: leads.needs, personalNotes: leads.personalNotes }).from(leads).where(eq(leads.id, leadId));
+    await db.update(leads).set({
+      needs: appendDated(lead?.needs ?? null, input.needs, day), personalNotes: appendDated(lead?.personalNotes ?? null, input.personalNotes, day), updatedAt: new Date(),
+    }).where(eq(leads.id, leadId));
+    await db.update(meetingProposals).set({ leadId }).where(eq(meetingProposals.id, id));
+    return true;
+  } catch (err) {
+    await release().catch(() => {});
+    throw err;
+  }
 }
 
 export async function discardProposal(id: number, reviewer: string): Promise<boolean> {

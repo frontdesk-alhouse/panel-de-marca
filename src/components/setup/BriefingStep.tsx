@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { draftAction, saveIntegrationAction } from "@/app/setup/actions";
 import type { Draft } from "@/lib/briefing/draft";
 import { COMPETITOR_INTERESTS, type Briefing } from "@/lib/workspace/schema";
-import { Alert, Button, StepHeader, TextField } from "./ui";
+import { Alert, Button, StepHeader, TextField, guarded } from "./ui";
 
 /** Paso 3: el briefing. Las respuestas guían el borrador, las sugerencias y al analista del chat. */
 export function BriefingStep({ domain, language, briefing, knownCompetitors, hasClaude, onChange, onDraft, onBack }: {
@@ -25,20 +25,20 @@ export function BriefingStep({ domain, language, briefing, knownCompetitors, has
   const set = (patch: Partial<Briefing>) => onChange({ ...briefing, ...patch }, knownCompetitors);
   const toggle = (k: (typeof COMPETITOR_INTERESTS)[number]) => set({ wantToKnow: briefing.wantToKnow.includes(k) ? briefing.wantToKnow.filter((x) => x !== k) : [...briefing.wantToKnow, k] });
 
-  const saveKey = () => startKey(async () => {
+  const saveKey = () => startKey(guarded(setError, t.common.unexpected, async () => {
     setError(null);
     const r = await saveIntegrationAction("anthropic", { ANTHROPIC_API_KEY: key });
     if (!r.ok) return setError(r.error);
     if (!r.data.test.ok) return setError(r.data.test.message);
     setClaude(true);
     setKey("");
-  });
-  const draft = () => startDraft(async () => {
+  }));
+  const draft = () => startDraft(guarded(setError, t.common.unexpected, async () => {
     setError(null);
     const r = await draftAction(domain, briefing, knownCompetitors, language);
     if (!r.ok) return setError(r.error);
     onDraft(r.data);
-  });
+  }));
 
   return (
     <div className="space-y-8">

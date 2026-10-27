@@ -8,7 +8,11 @@ export async function GET(req: Request) {
   const missing = await requireWorkspace();
   if (missing) return missing;
   if (!isMetaConfigured()) return Response.json({ error: "META_TOKEN no configurado" }, { status: 400 });
-  const safe = async <T>(p: Promise<T[]>) => p.catch((e: Error) => [{ error: e.message }] as unknown as T[]);
+    // El detalle de Meta puede traer datos del token o la cuenta: al log, no al navegador.
+  const safe = async <T>(p: Promise<T[]>) => p.catch((e: Error) => {
+    console.error("[meta/assets]", e.message);
+    return [{ error: "Meta rechazó la consulta. Revisa el token y sus permisos." }] as unknown as T[];
+  });
   const [pages, ads, perms] = await Promise.all([
     safe(graphAll<{ id: string; name: string }>("me/accounts", { fields: "id,name,instagram_business_account{id,username}", limit: 50 })),
     safe(graphAll<{ id: string; name: string }>("me/adaccounts", { fields: "id,name,account_status,currency,amount_spent", limit: 50 })),

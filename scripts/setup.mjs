@@ -8,6 +8,7 @@
  */
 import { randomBytes } from "node:crypto";
 import { execSync } from "node:child_process";
+import { createRequire } from "node:module";
 import { chmodSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 
 const MIN_NODE = 22;
@@ -31,5 +32,5 @@ chmodSync(ENV, 0o600);
 console.log(add.length ? `✓ ${ENV} listo` : `✓ ${ENV} ya estaba listo`);
 
 console.log("Construyendo el panel (tarda uno o dos minutos la primera vez)…");
-execSync("npx next build", { stdio: "inherit", env: { ...process.env, APP_MODE: "local", NEXT_TELEMETRY_DISABLED: "1" } });
+execSync(`"${process.execPath}" "${createRequire(import.meta.url).resolve("next/dist/bin/next")}" build`, { stdio: "inherit", env: { ...process.env, APP_MODE: "local", NEXT_TELEMETRY_DISABLED: "1" } });
 console.log("\n✓ Listo. Ábrelo con:  npm start");

@@ -3,6 +3,7 @@ import { loadWorkspace } from "@/lib/workspace/load";
 import { toPublic } from "@/lib/workspace/schema";
 import { setupCompletedAt, ws } from "@/lib/workspace/store";
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { bodyFont, displayFont } from "@brand-fonts";
 import { Fragment_Mono } from "next/font/google";
 import "./globals.css";
@@ -49,7 +50,8 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   const [viewer, workspace, lang] = await Promise.all([getViewer(), currentWorkspace(), getLang()]);
   const local = isLocalMode();
   // Local: mientras la configuración inicial no termina, /setup va a pantalla completa (sin menú).
-  const inSetup = local && (!workspace || !setupCompletedAt());
+  const path = local ? (await headers()).get("x-panel-path") ?? "" : "";
+  const inSetup = local && (!workspace || !setupCompletedAt() || path.startsWith("/setup"));
   // Local: sin login ni «Salir»; se muestra el nombre de quien configuró la marca.
   const shown = viewer && local && workspace?.brand.owner ? { ...viewer, name: workspace.brand.owner } : viewer;
   return (

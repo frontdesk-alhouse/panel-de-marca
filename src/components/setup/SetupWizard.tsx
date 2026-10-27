@@ -42,6 +42,9 @@ export function SetupWizard({ initial }: { initial: SetupInitial }) {
   const [drafted, setDrafted] = useState(false);
   const [missing, setMissing] = useState<string[]>([]);
   const [competitors, setCompetitors] = useState(initial.competitors);
+  // Viven aquí (no en cada paso) para no perderse al ir y volver entre pasos.
+  const [states, setStates] = useState(initial.states);
+  const [autoAddPending, setAutoAddPending] = useState(true);
   const saved = initial.form !== null;
   const reached = STEPS.indexOf(step);
 
@@ -51,6 +54,8 @@ export function SetupWizard({ initial }: { initial: SetupInitial }) {
     url.searchParams.delete("google");
     window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
     if (!url.hash) window.scrollTo({ top: 0 });
+    // Lectores de pantalla y teclado: el foco va al título del paso nuevo.
+    requestAnimationFrame(() => document.querySelector<HTMLElement>("[data-step-title]")?.focus({ preventScroll: true }));
   }, [step]);
 
   const go = (s: StepId) => setStep(s);
@@ -100,15 +105,16 @@ export function SetupWizard({ initial }: { initial: SetupInitial }) {
         {step === "briefing" && (
           site
             ? <BriefingStep domain={site.domain} language={form?.language ?? "es"} briefing={briefing} knownCompetitors={known} hasClaude={initial.hasClaude}
-                onChange={(b, k) => { setBriefing(b); setKnown(k); if (form) setForm({ ...form, briefing: b }); }} onDraft={onDraft} onBack={() => go("sitio")} />
+                onChange={(b, k) => { setBriefing(b); if (k !== known) setAutoAddPending(true); setKnown(k); if (form) setForm({ ...form, briefing: b }); }} onDraft={onDraft} onBack={() => go("sitio")} />
             : <SiteStep initialDomain={form?.domain ?? ""} site={null} onRead={setSite} onNext={() => go("briefing")} />
         )}
         {step === "marca" && form && <BrandStep form={form} onChange={setForm} drafted={drafted} missingFromDraft={missing} onSaved={() => { router.refresh(); go("mercado"); }} onBack={() => go("briefing")} />}
         {step === "mercado" && form && (
           <MarketStep form={form} onChange={setForm} competitors={competitors} onCompetitors={setCompetitors} knownCompetitors={known}
+            autoAddPending={autoAddPending} onAutoAdded={() => setAutoAddPending(false)}
             hasApify={initial.hasApify} onSaved={() => go("conexiones")} onBack={() => go("marca")} />
         )}
-        {step === "conexiones" && <ConnectionsStep states={initial.states} googleResult={initial.googleResult} back="/setup" onNext={() => go("actualizar")} onBack={() => go("mercado")} />}
+        {step === "conexiones" && <ConnectionsStep states={states} onStates={setStates} googleResult={initial.googleResult} back="/setup" onNext={() => go("actualizar")} onBack={() => go("mercado")} />}
         {step === "actualizar" && <SyncStep onBack={() => go("conexiones")} />}
       </main>
     </div>

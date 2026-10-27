@@ -9,26 +9,27 @@ import type { CompetitorInput } from "@/lib/workspace/schema";
 import { control } from "@/components/crm/fields";
 import { cn } from "@/lib/utils";
 import { useT } from "@/i18n/client";
-import { Alert, Button, ListField, Section, StepHeader, SuggestionRow, TextField } from "./ui";
+import { Alert, Button, ListField, Section, StepHeader, SuggestionRow, TextField, guarded } from "./ui";
 
 /** Paso 4: búsquedas objetivo, competencia y de dónde salen las ideas. Cada sugerencia trae su razón. */
-export function MarketStep({ form, onChange, competitors, onCompetitors, knownCompetitors = "", hasApify, onSaved, onBack, saveLabel, header = true }: {
+export function MarketStep({ form, onChange, competitors, onCompetitors, knownCompetitors = "", autoAddPending = false, onAutoAdded, hasApify, onSaved, onBack, saveLabel, header = true }: {
   form: BrandForm; onChange: (f: BrandForm) => void; competitors: CompetitorInput[]; onCompetitors: (c: CompetitorInput[]) => void;
-  knownCompetitors?: string; hasApify: boolean; onSaved: () => void; onBack?: () => void; saveLabel?: string; header?: boolean;
+  knownCompetitors?: string; autoAddPending?: boolean; onAutoAdded?: () => void; hasApify: boolean; onSaved: () => void; onBack?: () => void; saveLabel?: string; header?: boolean;
 }) {
   const t = useT();
   const c = t.setup.market;
   const ex = t.common.example;
   const [error, setError] = useState<string | null>(null);
   const [saving, startSave] = useTransition();
-  const save = () => startSave(async () => {
+  const [addingCompetitors, setAddingCompetitors] = useState(false);
+  const save = () => startSave(guarded(setError, t.common.unexpected, async () => {
     setError(null);
     const brand = await saveBrandAction(form);
     if (!brand.ok) return setError(brand.error);
     const comp = await saveCompetitorsAction(competitors);
     if (!comp.ok) return setError(comp.error);
     onSaved();
-  });
+  }));
 
   return (
     <div className="space-y-8">
@@ -36,7 +37,8 @@ export function MarketStep({ form, onChange, competitors, onCompetitors, knownCo
         <StepHeader eyebrow={c.eyebrow} title={c.title}><p>{c.intro}</p></StepHeader>
       )}
       <QueriesSection form={form} onChange={onChange} />
-      <CompetitorsSection form={form} competitors={competitors} onCompetitors={onCompetitors} knownCompetitors={knownCompetitors} hasApify={hasApify} />
+      <CompetitorsSection form={form} competitors={competitors} onCompetitors={onCompetitors} knownCompetitors={knownCompetitors} hasApify={hasApify}
+        autoAddPending={autoAddPending} onAutoAdded={onAutoAdded} onBusy={setAddingCompetitors} />
       <Section title={c.ideasTitle} description={c.ideasIntro}>
         <div className="grid gap-5 md:grid-cols-2">
           <ListField label={c.topics} values={form.topics} onChange={(v) => onChange({ ...form, topics: v })} placeholder={ex(c.topicsEx)} hint={c.topicsHint} />
@@ -47,7 +49,7 @@ export function MarketStep({ form, onChange, competitors, onCompetitors, knownCo
       {error && <Alert>{error}</Alert>}
       <div className="flex items-center justify-between">
         {onBack ? <Button variant="quiet" onClick={onBack}>{t.common.back}</Button> : <span />}
-        <Button onClick={save} pending={saving}>{saveLabel ?? t.common.saveContinue}</Button>
+        <Button onClick={save} pending={saving || addingCompetitors}>{saveLabel ?? t.common.saveContinue}</Button>
       </div>
     </div>
   );
@@ -60,12 +62,12 @@ function QueriesSection({ form, onChange }: { form: BrandForm; onChange: (f: Bra
   const [discarded, setDiscarded] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
-  const fetchSuggestions = () => start(async () => {
+  const fetchSuggestions = () => start(guarded(setError, t.common.unexpected, async () => {
     setError(null);
     const r = await suggestQueriesAction(form.services, form.city, form.locale);
     if (r.ok) setSuggestions(r.data);
     else setError(r.error);
-  });
+  }));
   const add = (q: string) => onChange({ ...form, targetQueries: [...new Set([...form.targetQueries, q])] });
   const visible = (suggestions ?? []).filter((s) => !discarded.includes(s.value));
   return (
@@ -91,8 +93,9 @@ function QueriesSection({ form, onChange }: { form: BrandForm; onChange: (f: Bra
   );
 }
 
-function CompetitorsSection({ form, competitors, onCompetitors, knownCompetitors, hasApify }: {
+function CompetitorsSection({ form, competitors, onCompetitors, knownCompetitors, hasApify, autoAddPending, onAutoAdded, onBusy }: {
   form: BrandForm; competitors: CompetitorInput[]; onCompetitors: (c: CompetitorInput[]) => void; knownCompetitors: string; hasApify: boolean;
+  autoAddPending: boolean; onAutoAdded?: () => void; onBusy?: (busy: boolean) => void;
 }) {
   const t = useT();
   const c = t.setup.market;
@@ -107,37 +110,42 @@ function CompetitorsSection({ form, competitors, onCompetitors, knownCompetitors
   useEffect(() => { listRef.current = competitors; }, [competitors]);
   const has = (domain: string) => competitors.some((x) => x.domain === domain);
 
-  const addDomain = async (domain: string) => {
+  /** true si quedó agregado (o ya estaba); false si falló y se mostró el error. */
+  const addDomain = async (domain: string): Promise<boolean> => {
     const r = await competitorFromSiteAction(domain, form.city);
-    if (!r.ok) return setError(r.error);
-    if (r.data.domain === form.domain) return setError(c.ownSite);
-    if (listRef.current.some((x) => x.domain === r.data.domain)) return;
+    if (!r.ok) { setError(r.error); return false; }
+    if (r.data.domain === form.domain) { setError(c.ownSite); return false; }
+    if (listRef.current.some((x) => x.domain === r.data.domain)) return true;
     const next = [...listRef.current, r.data];
     listRef.current = next;
     onCompetitors(next);
+    return true;
   };
-  const addManual = () => startAdd(async () => {
+  const addManual = () => startAdd(guarded(setError, t.common.unexpected, async () => {
     setError(null);
-    await addDomain(input);
-    setInput("");
-  });
+    // Si falla, se conserva lo escrito para corregirlo.
+    if (await addDomain(input)) setInput("");
+  }));
 
-  // Los sitios que la persona escribió en el briefing se leen y se agregan solos (una vez).
-  const autoAdded = useRef(false);
+  // Los sitios que la persona escribió en el briefing se leen y se agregan solos, una sola vez
+  // por configuración (no al volver a este paso: lo que quitó no debe reaparecer).
   useEffect(() => {
-    if (autoAdded.current) return;
-    autoAdded.current = true;
+    if (!autoAddPending) return;
+    onAutoAdded?.();
     const pending = domainsInText(knownCompetitors).filter((d) => d !== form.domain && !listRef.current.some((x) => x.domain === d));
-    if (pending.length) startAdd(async () => { for (const d of pending.slice(0, 10)) await addDomain(d); });
+    if (pending.length) startAdd(guarded(setError, t.common.unexpected, async () => { for (const d of pending.slice(0, 10)) await addDomain(d); }));
     // eslint-disable-next-line react-hooks/exhaustive-deps -- solo al entrar al paso
   }, []);
 
-  const suggest = () => startSuggest(async () => {
+  // El botón Guardar del paso espera a que terminen las altas en curso.
+  useEffect(() => { onBusy?.(adding); }, [adding, onBusy]);
+
+  const suggest = () => startSuggest(guarded(setError, t.common.unexpected, async () => {
     setError(null);
     const r = await suggestCompetitorsAction(form.targetQueries, form.domain, form.locale);
     if (r.ok) setResult(r.data);
     else setError(r.error);
-  });
+  }));
   const update = (i: number, patch: Partial<CompetitorInput>) => onCompetitors(competitors.map((x, j) => (j === i ? { ...x, ...patch } : x)));
   const visible = (result?.suggestions ?? []).filter((s) => !discarded.includes(s.value.domain));
 
@@ -186,7 +194,7 @@ function CompetitorsSection({ form, competitors, onCompetitors, knownCompetitors
           <ul className="space-y-2" aria-label={c.suggestedCompetitors}>
             {visible.map((s) => (
               <SuggestionRow key={s.value.domain} title={<>{s.value.name} <span className="font-normal text-muted-foreground">· {s.value.domain}</span></>} reason={s.reason}
-                added={has(s.value.domain)} onAdd={() => startAdd(() => addDomain(s.value.domain))} onDiscard={() => setDiscarded((d) => [...d, s.value.domain])} />
+                added={has(s.value.domain)} onAdd={() => startAdd(guarded(setError, t.common.unexpected, () => addDomain(s.value.domain)))} onDiscard={() => setDiscarded((d) => [...d, s.value.domain])} />
             ))}
           </ul>
         )}

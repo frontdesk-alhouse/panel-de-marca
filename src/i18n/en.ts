@@ -18,6 +18,7 @@ const en: Messages = {
     newTab: "(new tab)",
     optional: "(optional)",
     example: (x) => `e.g. ${x}`,
+    unexpected: "Something failed on our side or the connection dropped. Try again.",
     missing: (list) => `Missing ${list}.`,
   },
   nav: {

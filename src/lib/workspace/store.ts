@@ -7,7 +7,14 @@ import type { Competitor, CompetitorInput, Workspace } from "./schema";
  * de mostrar una marca vacía.
  */
 interface Loaded { ws: Workspace; competitors: CompetitorInput[]; loadedAt: number; setupCompletedAt: Date | null }
-let current: Loaded | null = null;
+/**
+ * En globalThis y no en una variable del módulo: Next empaqueta este archivo por separado
+ * (páginas, acciones, APIs, instrumentation) y cada copia tendría su propia marca. Así,
+ * al guardar desde una acción, las páginas ven el cambio al momento.
+ */
+const KEY = Symbol.for("panel-de-marca.workspace");
+const box = globalThis as typeof globalThis & { [KEY]?: Loaded | null };
+const getCurrent = (): Loaded | null => box[KEY] ?? null;
 
 export class WorkspaceMissingError extends Error {
   constructor() {
@@ -17,28 +24,29 @@ export class WorkspaceMissingError extends Error {
 }
 
 export function setWorkspace(ws: Workspace, competitors: CompetitorInput[], setupCompletedAt: Date | null = new Date()): void {
-  current = { ws, competitors, loadedAt: Date.now(), setupCompletedAt };
+  box[KEY] = { ws, competitors, loadedAt: Date.now(), setupCompletedAt };
 }
 
 export function clearWorkspace(): void {
-  current = null;
+  box[KEY] = null;
 }
 
 export function hasWorkspace(): boolean {
-  return current !== null;
+  return getCurrent() !== null;
 }
 
 export function loadedAt(): number {
-  return current?.loadedAt ?? 0;
+  return getCurrent()?.loadedAt ?? 0;
 }
 
 export function setupCompletedAt(): Date | null {
-  return current?.setupCompletedAt ?? null;
+  return getCurrent()?.setupCompletedAt ?? null;
 }
 
 export function ws(): Workspace {
-  if (!current) throw new WorkspaceMissingError();
-  return current.ws;
+  const loaded = getCurrent();
+  if (!loaded) throw new WorkspaceMissingError();
+  return loaded.ws;
 }
 
 /** Sitio propio primero (con `self`), luego la competencia activa en su orden. */
@@ -46,7 +54,7 @@ export function competitors(): Competitor[] {
   const w = ws();
   const self: Competitor = { name: w.brand.name, domain: w.brand.domain, city: w.brand.city, self: true, mapsQuery: w.brand.mapsQuery };
   if (w.brand.instagram) self.instagram = w.brand.instagram;
-  return [self, ...(current?.competitors ?? [])];
+  return [self, ...(getCurrent()?.competitors ?? [])];
 }
 
 /** Ciudades que cuentan como «área local» en Tráfico. */
@@ -65,7 +73,7 @@ export const DEFAULT_LOCALE: Workspace["locale"] = { language: "es", locale: "es
 let clientLocale: Workspace["locale"] | null = null;
 
 export function localeSettings(): Workspace["locale"] {
-  return current?.ws.locale ?? clientLocale ?? DEFAULT_LOCALE;
+  return getCurrent()?.ws.locale ?? clientLocale ?? DEFAULT_LOCALE;
 }
 
 /** En el navegador solo existe la versión pública: la fija WorkspaceProvider. */

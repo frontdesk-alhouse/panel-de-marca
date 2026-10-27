@@ -33,6 +33,9 @@
   --color-good: var(--good);
   --color-warn: var(--warn);
   --color-bad: var(--bad);
+  /* Texto de estado (≥4.5:1 sobre fondos claros/tintados); --good/--bad siguen para gráficas. */
+  --color-good-ink: var(--good-ink);
+  --color-bad-ink: var(--bad-ink);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -68,6 +71,8 @@
   --good: #13907f;
   --warn: #a87b1f;
   --bad: #9e3a26;
+  --good-ink: #0b6b5e;
+  --bad-ink: #9e3a26;
   /* Serie categórica validada (dataviz): un color fijo por canal. */
   --series-1: #2a78d6;
   --series-2: #eb6834;
@@ -105,6 +110,8 @@
   --input: #52525b;
   --ring: #fafafa;
   --good: #1f9e8a;
+  --good-ink: #4fd1bb;
+  --bad-ink: #f4838f;
   --warn: #ad8619;
   --bad: #e8606e;
   --series-1: #3987e5;

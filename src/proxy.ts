@@ -26,7 +26,10 @@ function localProxyInner(req: NextRequest): Response {
     target.pathname = "/api/setup/google/callback";
     return NextResponse.rewrite(target);
   }
-  return NextResponse.next();
+  // El layout necesita saber si es /setup (va a pantalla completa, sin menú).
+  const headers = new Headers(req.headers);
+  headers.set(PATH_HEADER, pathname);
+  return NextResponse.next({ request: { headers } });
 }
 
 /** Cada respuesta lleva el identificador de este panel (ver bind-check). */
@@ -35,6 +38,9 @@ function localProxy(req: NextRequest): Response {
   res.headers.set(INSTANCE_HEADER, instanceId());
   return res;
 }
+
+/** Ruta del pedido para el layout (solo modo local; ver app/layout.tsx). */
+const PATH_HEADER = "x-panel-path";
 
 export default function proxy(req: NextRequest, ev: NextFetchEvent) {
   if (isLocalMode()) return localProxy(req);

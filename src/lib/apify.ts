@@ -10,6 +10,9 @@ const TIMEOUT_MS = 30_000;
 
 export interface ApifyRun { id: string; status: string; startedAt: string; defaultDatasetId: string }
 
+/** Estados de corrida que no van a traer datos. */
+const FAILED = new Set(["FAILED", "ABORTED", "TIMED-OUT", "TIMING-OUT", "ABORTING"]);
+
 export const isApifyConfigured = () => Boolean(process.env.APIFY_TOKEN);
 
 async function call<T>(path: string, init?: RequestInit): Promise<T | null> {
@@ -56,15 +59,23 @@ export async function harvest<T>(actor: string, input: unknown, opts: { everyDay
   const today = todayIso();
   const due = !latest || (latest.status !== "RUNNING" && runDate(latest) <= addDays(today, -opts.everyDays));
   let started = false;
+  let startError: string | null = null;
   if (due) {
     try {
       await startRun(actor, input, opts.maxChargeUsd);
       started = true;
     } catch (e) {
       // Límite de corridas simultáneas u otro rechazo: se guarda lo que hay y se reintenta mañana.
-      console.warn(`[apify] no se pudo arrancar ${actor}:`, e instanceof Error ? e.message : e);
+      startError = e instanceof Error ? e.message : String(e);
+      console.warn(`[apify] no se pudo arrancar ${actor}:`, startError);
     }
   }
+  const failed = latest && FAILED.has(latest.status) ? latest.status : null;
+  // Sin ningún resultado bueno, un fallo se reporta como error (no como «0 filas» que parece dato real).
+  if (!done && (failed || startError)) {
+    throw new Error(`Apify (${actor}): ${failed ? `la última corrida terminó en ${failed}` : `no se pudo arrancar: ${startError}`}. Revisa tu crédito y el token.`);
+  }
+  if (done && failed) console.warn(`[apify] ${actor}: la corrida más reciente terminó en ${failed}; se usan los datos del ${runDate(done)}`);
   return { items, date: done ? runDate(done) : null, started };
 }
 

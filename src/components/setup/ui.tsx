@@ -8,11 +8,27 @@ import { control } from "@/components/crm/fields";
 
 /** Piezas compartidas de la configuración inicial y de /ajustes. */
 
+/**
+ * Envuelve una acción del servidor dentro de startTransition: si falla la red o el
+ * servidor, se muestra un error en el paso (en React 19 la excepción subiría al límite
+ * de error y se perdería lo capturado en la configuración).
+ */
+export function guarded(setError: (message: string | null) => void, message: string, fn: () => Promise<unknown>): () => Promise<void> {
+  return async () => {
+    try {
+      await fn();
+    } catch (err) {
+      console.error(err);
+      setError(message);
+    }
+  };
+}
+
 export function StepHeader({ eyebrow, title, children }: { eyebrow: string; title: string; children?: React.ReactNode }) {
   return (
     <header className="space-y-3">
       <p className="font-mono text-[11px] uppercase text-muted-foreground">{eyebrow}</p>
-      <h1 className="font-display text-4xl leading-[1.05] md:text-5xl">{title}</h1>
+      <h1 tabIndex={-1} data-step-title className="font-display text-4xl leading-[1.05] outline-none md:text-5xl">{title}</h1>
       {children && <div className="max-w-2xl text-[15px] leading-relaxed text-muted-foreground">{children}</div>}
     </header>
   );
@@ -38,7 +54,7 @@ export function TextField({ label, hint, value, onChange, multiline = false, row
   label: string; hint?: React.ReactNode; value: string; onChange: (v: string) => void; multiline?: boolean; rows?: number; placeholder?: string; type?: string; required?: boolean; invalid?: boolean;
 }) {
   const id = useId();
-  const common = { id, value, placeholder, "aria-invalid": invalid || undefined, "aria-describedby": hint ? `${id}-hint` : undefined, onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => onChange(e.target.value) };
+  const common = { id, value, placeholder, "aria-required": required || undefined, "aria-invalid": invalid || undefined, "aria-describedby": hint ? `${id}-hint` : undefined, onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => onChange(e.target.value) };
   return (
     <div className="space-y-1.5">
       <label htmlFor={id} className="block font-mono text-[11px] uppercase text-muted-foreground">{label}{required && <span aria-hidden> *</span>}</label>
@@ -97,7 +113,7 @@ export function SuggestionRow({ title, reason, added, onAdd, onDiscard, children
       </div>
       <div className="flex shrink-0 items-center gap-1">
         {added
-          ? <span className="inline-flex items-center gap-1 font-mono text-[11px] uppercase text-good"><Check className="h-3.5 w-3.5" aria-hidden />{t.common.added}</span>
+          ? <span className="inline-flex items-center gap-1 font-mono text-[11px] uppercase text-good-ink"><Check className="h-3.5 w-3.5" aria-hidden />{t.common.added}</span>
           : <>
               <Button variant="ghost" className="h-8 px-3" onClick={onAdd}>{t.common.add}</Button>
               <Button variant="quiet" className="h-8" onClick={onDiscard}>{t.common.discard}</Button>
@@ -110,7 +126,7 @@ export function SuggestionRow({ title, reason, added, onAdd, onDiscard, children
 export function Alert({ tone = "bad", children }: { tone?: "bad" | "good" | "info"; children: React.ReactNode }) {
   return (
     <p role={tone === "bad" ? "alert" : "status"} className={cn("rounded-lg px-3 py-2 text-sm",
-      tone === "bad" && "bg-bad/10 text-bad", tone === "good" && "bg-good/10 text-good", tone === "info" && "bg-card text-muted-foreground")}>
+      tone === "bad" && "bg-bad/10 text-bad-ink", tone === "good" && "bg-good/10 text-good-ink", tone === "info" && "bg-card text-muted-foreground")}>
       {children}
     </p>
   );

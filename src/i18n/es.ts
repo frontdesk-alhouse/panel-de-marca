@@ -20,6 +20,7 @@ const es = {
     newTab: "(pestaña nueva)",
     optional: "(opcional)",
     example: (x: string) => `p. ej. ${x}`,
+    unexpected: "Algo falló de nuestro lado o se cortó la conexión. Intenta de nuevo.",
     missing: (list: string) => `Falta ${list}.`,
   },
   nav: {

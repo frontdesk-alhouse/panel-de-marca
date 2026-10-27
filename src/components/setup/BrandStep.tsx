@@ -7,7 +7,7 @@ import { saveBrandAction } from "@/app/setup/actions";
 import { missingFields, type BrandForm } from "@/lib/briefing/brand-form";
 import { control } from "@/components/crm/fields";
 import { cn } from "@/lib/utils";
-import { Alert, Button, ListField, Section, StepHeader, TextField } from "./ui";
+import { Alert, Button, ListField, Section, StepHeader, TextField, guarded } from "./ui";
 
 /** Paso 3: la ficha de la marca, prellenada por el sitio (y Claude). La persona la corrige y guarda. */
 export function BrandStep({ form, onChange, missingFromDraft = [], drafted, onSaved, onBack, saveLabel, header = true }: {
@@ -22,13 +22,13 @@ export function BrandStep({ form, onChange, missingFromDraft = [], drafted, onSa
   const [pending, start] = useTransition();
   const set = (patch: Partial<BrandForm>) => { setSaved(false); onChange({ ...form, ...patch }); };
   const missing = missingFields(form);
-  const save = () => start(async () => {
+  const save = () => start(guarded(setError, t.common.unexpected, async () => {
     setError(null);
     const r = await saveBrandAction(form);
     if (!r.ok) return setError(r.error);
     setSaved(true);
     onSaved();
-  });
+  }));
 
   return (
     <div className="space-y-8">

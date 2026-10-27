@@ -31,10 +31,22 @@ interface Props {
   emptyText?: string;
 }
 
+/** Links de terceros (resultados de Google, Instagram): solo http(s); un «javascript:» se muestra como texto. */
+function safeHttpUrl(url: string): string | null {
+  try {
+    const p = new URL(url).protocol;
+    return p === "https:" || p === "http:" ? url : null;
+  } catch {
+    return null;
+  }
+}
+
 function render(type: Column["type"], v: CellValue): React.ReactNode {
   if (v === null || v === undefined) return <span className="text-muted-foreground">-</span>;
   if (type === "link" && typeof v === "object" && !Array.isArray(v)) {
-    return <a href={v.href} target="_blank" rel="noopener noreferrer" className="underline decoration-muted-foreground/50 underline-offset-4 hover:decoration-foreground">{v.text}</a>;
+    const href = v.href ? safeHttpUrl(v.href) : null;
+    if (!href) return v.text;
+    return <a href={href} target="_blank" rel="noopener noreferrer" className="underline decoration-muted-foreground/50 underline-offset-4 hover:decoration-foreground">{v.text}</a>;
   }
   if (typeof v === "object" && !Array.isArray(v)) return v.text;
   if (type === "chips") return Array.isArray(v) && v.length ? <span className="inline-flex flex-wrap gap-1">{v.map((c) => <Chip key={c.text} tone={c.tone}>{c.text}</Chip>)}</span> : null;

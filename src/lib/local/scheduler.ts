@@ -72,12 +72,14 @@ async function runJob(job: Job): Promise<void> {
   return runLogged(job, () => runWeeklyAnalysis());
 }
 
-let ticking = false;
+/** Una revisión a la vez en todo el proceso (el botón de la configuración importa otra copia del módulo). */
+const TICKING = Symbol.for("panel-de-marca.scheduler-ticking");
+const flags = globalThis as typeof globalThis & { [TICKING]?: boolean };
 
 /** Una revisión: corre en orden todo lo que toca. No se encima con otra revisión. */
 export async function tick(now = () => new Date()): Promise<string[]> {
-  if (ticking) return [];
-  ticking = true;
+  if (flags[TICKING]) return [];
+  flags[TICKING] = true;
   const ran: string[] = [];
   try {
     if (!(await loadWorkspace())) return ran; // sin marca configurada no hay nada que medir
@@ -86,13 +88,18 @@ export async function tick(now = () => new Date()): Promise<string[]> {
     for (const job of JOBS) {
       const state = states.get(job.id);
       if (!state || !canRun(job) || !isDue(job, state, now(), timeZone)) continue;
-      await runJob(job);
-      ran.push(job.id);
+      // Un trabajo que falla no detiene a los demás.
+      try {
+        await runJob(job);
+        ran.push(job.id);
+      } catch (err) {
+        console.error(`[programador:${job.id}]`, err);
+      }
     }
   } catch (err) {
     console.error("[programador]", err);
   } finally {
-    ticking = false;
+    flags[TICKING] = false;
   }
   return ran;
 }

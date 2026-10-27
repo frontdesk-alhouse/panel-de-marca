@@ -133,11 +133,12 @@ export async function reddit(): Promise<IdeaHit[]> {
   return lists.flat().filter((h) => isOnTopic(h.text));
 }
 
-let redditToken: Promise<string | null> | null = null;
+/** Token de Reddit compartido por el proceso, con su vencimiento (~1 h) y ligado a las llaves. */
+const REDDIT = Symbol.for("panel-de-marca.reddit-token");
+const tokenBox = globalThis as typeof globalThis & { [REDDIT]?: { creds: string; token: string; expiresAt: number } | null };
 
-/** Olvida el token (al cambiar las llaves de Reddit en la configuración). */
 export function resetRedditToken(): void {
-  redditToken = null;
+  tokenBox[REDDIT] = null;
 }
 
 /** Token de solo lectura de la API oficial (app gratuita en reddit.com/prefs/apps). */
@@ -145,13 +146,28 @@ function getRedditToken(): Promise<string | null> {
   const id = process.env.REDDIT_CLIENT_ID;
   const secret = process.env.REDDIT_CLIENT_SECRET;
   if (!id || !secret) return Promise.resolve(null);
-  redditToken ??= fetch("https://www.reddit.com/api/v1/access_token", {
+  const creds = `${id}:${secret}`;
+  const cached = tokenBox[REDDIT];
+  if (cached && cached.creds === creds && cached.expiresAt > Date.now()) return Promise.resolve(cached.token);
+  return fetch("https://www.reddit.com/api/v1/access_token", {
     method: "POST",
-    headers: { Authorization: `Basic ${Buffer.from(`${id}:${secret}`).toString("base64")}`, "Content-Type": "application/x-www-form-urlencoded", "User-Agent": crawlerUserAgent() },
+    headers: { Authorization: `Basic ${Buffer.from(creds).toString("base64")}`, "Content-Type": "application/x-www-form-urlencoded", "User-Agent": crawlerUserAgent() },
     body: "grant_type=client_credentials",
     signal: AbortSignal.timeout(TIMEOUT_MS),
-  }).then(async (r) => (r.ok ? ((await r.json()) as { access_token?: string }).access_token ?? null : null)).catch(() => null);
-  return redditToken;
+  }).then(async (r) => {
+    if (!r.ok) {
+      console.warn(`[ideas] Reddit rechazó las llaves (${r.status}); se usa RSS`);
+      return null;
+    }
+    const json = (await r.json()) as { access_token?: string; expires_in?: number };
+    if (!json.access_token) return null;
+    // Un minuto de margen antes de que venza.
+    tokenBox[REDDIT] = { creds, token: json.access_token, expiresAt: Date.now() + ((json.expires_in ?? 3600) - 60) * 1000 };
+    return json.access_token;
+  }).catch((e) => {
+    console.warn("[ideas] no se pudo pedir el token de Reddit:", e instanceof Error ? e.message : e);
+    return null;
+  });
 }
 
 interface RedditPost { data: { title: string; permalink: string; score: number; num_comments: number; created_utc: number; subreddit: string } }

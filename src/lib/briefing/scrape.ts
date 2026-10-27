@@ -84,14 +84,14 @@ async function readCapped(res: Response, max: number): Promise<string> {
  * direcciones privadas, y siguiendo a mano hasta 3 redirecciones con las mismas reglas.
  * Así un sitio no puede mandar al lector a servicios de esta computadora o de la red local.
  */
-async function fetchText(url: string, domain: string, kind: "html" | "xml" = "html"): Promise<{ url: string; text: string } | null> {
+async function fetchText(url: string, domain: string, kind: "html" | "xml" = "html", userAgent = UA): Promise<{ url: string; text: string } | null> {
   let current = url;
   try {
     for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
       const u = new URL(current);
       const host = u.hostname.toLowerCase();
       if (!/^https?:$/.test(u.protocol) || (host !== domain && host !== `www.${domain}`) || !(await isPublicHost(host))) return null;
-      const res = await fetch(u, { headers: { "User-Agent": UA, Accept: "text/html,application/xml;q=0.9,*/*;q=0.5" }, redirect: "manual", signal: AbortSignal.timeout(PAGE_TIMEOUT_MS) });
+      const res = await fetch(u, { headers: { "User-Agent": userAgent, Accept: "text/html,application/xml;q=0.9,*/*;q=0.5" }, redirect: "manual", signal: AbortSignal.timeout(PAGE_TIMEOUT_MS) });
       if (res.status >= 300 && res.status < 400) {
         const next = res.headers.get("location");
         await res.body?.cancel().catch(() => {});
@@ -109,6 +109,9 @@ async function fetchText(url: string, domain: string, kind: "html" | "xml" = "ht
     return null;
   }
 }
+
+/** El mismo lector protegido, para medir sitios de la competencia (src/sources/competitors.ts). */
+export const fetchFromSite = fetchText;
 
 /** Reglas de robots.txt para «*» y para nuestro agente: rutas prohibidas y sitemaps. */
 export function parseRobots(text: string): { disallow: string[]; sitemaps: string[] } {

@@ -4,7 +4,7 @@ import { useT } from "@/i18n/client";
 import { useState, useTransition } from "react";
 import { Globe } from "lucide-react";
 import { readSiteAction, type SiteSummary } from "@/app/setup/actions";
-import { Alert, Button, StepHeader, TextField } from "./ui";
+import { Alert, Button, StepHeader, TextField, guarded } from "./ui";
 
 /** Paso 2: la persona da su sitio y el panel lee quién es. */
 export function SiteStep({ initialDomain, site, onRead, onNext }: { initialDomain: string; site: SiteSummary | null; onRead: (s: SiteSummary) => void; onNext: () => void }) {
@@ -13,12 +13,12 @@ export function SiteStep({ initialDomain, site, onRead, onNext }: { initialDomai
   const [domain, setDomain] = useState(initialDomain);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
-  const read = () => start(async () => {
+  const read = () => start(guarded(setError, t.common.unexpected, async () => {
     setError(null);
     const r = await readSiteAction(domain);
     if (r.ok) onRead(r.data);
     else setError(r.error);
-  });
+  }));
   const f = site?.facts;
   const found: [string, string | null][] = f ? [
     [c.facts.name, f.name], [c.facts.city, f.city], [c.facts.phone, f.phone], [c.facts.instagram, f.instagram && `@${f.instagram}`],

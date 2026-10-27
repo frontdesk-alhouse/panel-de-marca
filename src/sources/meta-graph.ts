@@ -37,16 +37,23 @@ export async function graphAll<T>(path: string, params: Record<string, string | 
 
 export interface MetaAssets { adAccountIds: string[]; skippedAccounts: string[]; igUserId: string | null; igUsername: string | null; pageId: string | null }
 
-let cached: Promise<MetaAssets> | null = null;
+/**
+ * Lo descubierto con el token, compartido por todo el proceso y ligado al token: si la
+ * persona lo cambia en Ajustes, el valor viejo deja de servir solo (aunque otra copia del
+ * módulo no se entere del reset).
+ */
+const CACHE = Symbol.for("panel-de-marca.meta-assets");
+const store = globalThis as typeof globalThis & { [CACHE]?: { token: string; value: Promise<MetaAssets> } | null };
 
-/** Olvida lo descubierto (al cambiar el token en la configuración). */
 export function resetMetaAssets(): void {
-  cached = null;
+  store[CACHE] = null;
 }
 
 /** Encuentra cuenta publicitaria, página e Instagram del usuario del sistema (o usa las de env). */
 export function metaAssets(): Promise<MetaAssets> {
-  cached ??= (async () => {
+  const token = process.env.META_TOKEN ?? "";
+  if (store[CACHE]?.token === token) return store[CACHE].value;
+  const value = (async () => {
     const [pages, ads] = await Promise.all([
       graphAll<{ id: string; name: string; instagram_business_account?: { id: string; username?: string } }>("me/accounts", { fields: "id,name,instagram_business_account{id,username}", limit: 50 }).catch(() => []),
       graphAll<{ id: string; name: string; account_status: number; currency: string }>("me/adaccounts", { fields: "id,name,account_status,currency", limit: 50 }).catch(() => []),
@@ -63,6 +70,7 @@ export function metaAssets(): Promise<MetaAssets> {
       igUsername: page?.instagram_business_account?.username ?? null,
       pageId: page?.id ?? null,
     };
-  })().catch((e) => { cached = null; throw e; });
-  return cached;
+  })().catch((e) => { if (store[CACHE]?.value === value) store[CACHE] = null; throw e; });
+  store[CACHE] = { token, value };
+  return value;
 }

@@ -9,15 +9,18 @@ import type { IntegrationState } from "@/lib/integrations/status";
 import type { Choice, TestResult } from "@/lib/integrations/test";
 import { control } from "@/components/crm/fields";
 import { cn } from "@/lib/utils";
-import { Alert, Button, StepHeader } from "./ui";
+import { Alert, Button, StepHeader, guarded } from "./ui";
 
 /** Paso 5: conexiones. Ninguna es obligatoria: lo que no se conecta queda como «Conectar» en su sección. */
-export function ConnectionsStep({ states: initial, googleResult, back, onNext, onBack, header = true }: {
-  states: IntegrationState[]; googleResult?: string | null; back: "/setup" | "/ajustes"; onNext?: () => void; onBack?: () => void; header?: boolean;
+export function ConnectionsStep({ states: initial, onStates, googleResult, back, onNext, onBack, header = true }: {
+  states: IntegrationState[]; onStates?: (s: IntegrationState[]) => void; googleResult?: string | null; back: "/setup" | "/ajustes"; onNext?: () => void; onBack?: () => void; header?: boolean;
 }) {
   const t = useT();
   const c = t.setup.connections;
-  const [states, setStates] = useState(initial);
+  // Si el padre guarda el estado (asistente, ajustes), se usa el suyo: no se pierde al cambiar de paso.
+  const [own, setOwn] = useState(initial);
+  const states = onStates ? initial : own;
+  const setStates = onStates ?? setOwn;
   const main = INTEGRATIONS.filter((i) => !i.advanced);
   const advanced = INTEGRATIONS.filter((i) => i.advanced);
   const connected = states.filter((s) => s.connected).length;
@@ -61,7 +64,7 @@ function IntegrationCard({ it, state, back, googleClientSet, googleResult, onSta
   const [testing, startTest] = useTransition();
   const fieldSet = (key: string) => state.fields.find((f) => f.key === key)?.set ?? false;
 
-  const save = () => startSave(async () => {
+  const save = () => startSave(guarded(setError, t.common.unexpected, async () => {
     setError(null);
     setResult(null);
     const r = await saveIntegrationAction(it.id, values);
@@ -72,14 +75,14 @@ function IntegrationCard({ it, state, back, googleClientSet, googleResult, onSta
     // Guardada: los secretos no vuelven, el campo queda vacío y marcado «guardada».
     // Si falló, se conserva lo escrito para corregirlo.
     if (r.data.test.ok) setValues((v) => Object.fromEntries(Object.entries(v).map(([k, val]) => [k, it.fields.find((f) => f.key === k)?.secret ? "" : val])));
-  });
-  const test = () => startTest(async () => {
+  }));
+  const test = () => startTest(guarded(setError, t.common.unexpected, async () => {
     setError(null);
     const r = await testIntegrationAction(it.id);
     if (!r.ok) return setError(r.error);
     setResult(r.data);
     if (r.data.choices) setChoices(r.data.choices);
-  });
+  }));
   const googleFlash = googleResult && c.google[googleResult] ? { tone: googleResult === "ok" ? "good" as const : "bad" as const, text: c.google[googleResult] } : null;
   // Llegando desde «Conectar» de una sección (/ajustes#clarity): abrir esta tarjeta.
   const ref = useRef<HTMLElement>(null);
@@ -98,9 +101,9 @@ function IntegrationCard({ it, state, back, googleClientSet, googleResult, onSta
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 space-y-1">
           <div className="flex items-center gap-2">
-            <h3 id={`${it.id}-name`} className="text-base font-medium">{text.name}</h3>
+            <h2 id={`${it.id}-name`} className="text-base font-medium">{text.name}</h2>
             <span className="rounded-full bg-background px-2 py-0.5 font-mono text-[10px] uppercase text-muted-foreground">{t.cost[it.cost]}</span>
-            {state.connected && <span className="inline-flex items-center gap-1 font-mono text-[10px] uppercase text-good"><Check className="h-3 w-3" aria-hidden />{c.connected}</span>}
+            {state.connected && <span className="inline-flex items-center gap-1 font-mono text-[10px] uppercase text-good-ink"><Check className="h-3 w-3" aria-hidden />{c.connected}</span>}
           </div>
           <p className="text-sm text-muted-foreground">{text.unlocks}</p>
           <p className="text-xs text-muted-foreground">{text.costNote} · {c.minutes(it.minutes)}</p>
@@ -135,7 +138,7 @@ function IntegrationCard({ it, state, back, googleClientSet, googleResult, onSta
                 <div key={f.key} className="space-y-1.5">
                   <label htmlFor={id} className="block font-mono text-[11px] uppercase text-muted-foreground">
                     {(text.fields as Record<string, string>)[f.key]}{f.optional && <span className="normal-case"> {t.common.optional}</span>}
-                    {f.secret && fieldSet(f.key) && <span className="ml-2 normal-case text-good">{c.savedKey}</span>}
+                    {f.secret && fieldSet(f.key) && <span className="ml-2 normal-case text-good-ink">{c.savedKey}</span>}
                   </label>
                   {list && list.length > 0 ? (
                     <select id={id} value={values[f.key] ?? ""} onChange={(e) => setValues({ ...values, [f.key]: e.target.value })} className={cn(control, "h-10")}>

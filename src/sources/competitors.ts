@@ -2,21 +2,21 @@ import { crawlerUserAgent } from "@/lib/workspace/store";
 import type { DateRange } from "@/lib/dates";
 import { competitors } from "@/lib/scorecard/config";
 import { servicePagePattern, serviceTitlePattern } from "@/lib/workspace/patterns";
+import { fetchFromSite } from "@/lib/briefing/scrape";
 import type { MetricRow, Source } from "./types";
 
 const PSI_ENDPOINT = "https://www.googleapis.com/pagespeedonline/v5/runPagespeed";
 const PSI_TIMEOUT_MS = 240_000;
-const FETCH_TIMEOUT_MS = 15_000;
 const MAX_CHILD_SITEMAPS = 10;
 const BLOG_PATTERN = /\/(blog|journal|insights|articulos|articles|notas|news|noticias|recursos)\//i;
 
-async function get(url: string): Promise<string | null> {
-  try {
-    const res = await fetch(url, { headers: { "User-Agent": crawlerUserAgent() }, redirect: "follow", signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
-    return res.ok ? await res.text() : null;
-  } catch {
-    return null;
-  }
+/**
+ * Descarga dentro del dominio del competidor con el lector protegido del briefing:
+ * sin direcciones privadas, redirecciones solo dentro del mismo sitio y con tope de
+ * tamaño. Un sitemap ajeno no puede mandar al panel a la red local.
+ */
+async function get(url: string, domain: string, kind: "html" | "xml" = "html"): Promise<string | null> {
+  return (await fetchFromSite(url, domain.replace(/^www\./, ""), kind, crawlerUserAgent()))?.text ?? null;
 }
 
 
@@ -50,10 +50,10 @@ export function parseSitemapEntries(xml: string): SitemapEntry[] {
 
 /** Entradas del sitemap (sigue un nivel de índice); null si no hay sitemap. */
 export async function sitemapEntries(domain: string): Promise<SitemapEntry[] | null> {
-  const root = (await get(`https://${domain}/sitemap.xml`)) ?? (await get(`https://www.${domain}/sitemap.xml`));
+  const root = (await get(`https://${domain}/sitemap.xml`, domain, "xml")) ?? (await get(`https://www.${domain}/sitemap.xml`, domain, "xml"));
   if (!root) return null;
   if (/<sitemapindex/i.test(root)) {
-    const children = await Promise.all(locs(root).slice(0, MAX_CHILD_SITEMAPS).map(get));
+    const children = await Promise.all(locs(root).slice(0, MAX_CHILD_SITEMAPS).map((u) => get(u, domain, "xml")));
     return children.flatMap((x) => (x ? parseSitemapEntries(x) : []));
   }
   return parseSitemapEntries(root);
@@ -128,7 +128,7 @@ export function siteForDate(isoDate: string) {
 
 /** `withSpeed: false` para el sitio propio: su PageSpeed ya lo mide la fuente psi. */
 export async function measureSite(domain: string, date: string, withSpeed = true): Promise<MetricRow[]> {
-  const [home, entries, speed] = await Promise.all([get(`https://${domain}/`), sitemapEntries(domain), withSpeed ? psi(domain) : null]);
+  const [home, entries, speed] = await Promise.all([get(`https://${domain}/`, domain), sitemapEntries(domain), withSpeed ? psi(domain) : null]);
   const sitemap = entries ? summarizeSitemap(entries, date) : null;
   const dimKey = `site:${domain}`;
   const rows: MetricRow[] = [];
@@ -144,7 +144,8 @@ export async function measureSite(domain: string, date: string, withSpeed = true
     push("indexable", h.indexable);
     push("title_keyword", h.title_keyword);
   }
-  push("has_https", home ? 1 : 0);
+  // Si la página no abrió (bloqueo, caída), no se sabe si tiene https: mejor sin dato que un 0 falso.
+  if (home) push("has_https", 1);
   push("has_sitemap", sitemap ? 1 : 0);
   if (sitemap) {
     push("sitemap_urls", sitemap.urls);

@@ -1,4 +1,4 @@
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq, notInArray, sql } from "drizzle-orm";
 import { getDb, isDbConfigured } from "@/db";
 import { competitors as competitorsTable, workspace as workspaceTable } from "@/db/schema";
 import { CompetitorSchema, WorkspaceSchema, type CompetitorInput, type Workspace } from "./schema";
@@ -6,7 +6,15 @@ import { hasWorkspace, loadedAt, setWorkspace } from "./store";
 
 /** Cada cuánto se vuelve a leer la base (cambios hechos desde otra instancia). */
 const REFRESH_MS = 60_000;
-let inflight: Promise<boolean> | null = null;
+/** Lectura en curso, compartida por todas las copias del módulo (ver store.ts). */
+const INFLIGHT = Symbol.for("panel-de-marca.workspace-inflight");
+const box = globalThis as typeof globalThis & { [INFLIGHT]?: Promise<boolean> | null };
+
+function startRead(): Promise<boolean> {
+  const p = read().finally(() => { if (box[INFLIGHT] === p) box[INFLIGHT] = null; });
+  box[INFLIGHT] = p;
+  return p;
+}
 
 async function read(): Promise<boolean> {
   const db = await getDb();
@@ -34,9 +42,11 @@ export async function loadWorkspace(opts: { force?: boolean } = {}): Promise<boo
   if (!isDbConfigured()) return hasWorkspace();
   const fresh = hasWorkspace() && Date.now() - loadedAt() < REFRESH_MS;
   if (fresh && !opts.force) return true;
-  inflight ??= read().finally(() => { inflight = null; });
+  // Forzado (después de guardar): una lectura que empezó antes podría traer lo viejo; se espera y se lee de nuevo.
+  if (opts.force && box[INFLIGHT]) await box[INFLIGHT].catch(() => {});
+  const pending = !opts.force && box[INFLIGHT] ? box[INFLIGHT] : startRead();
   try {
-    return await inflight;
+    return await pending;
   } catch (err) {
     // Si ya había una copia, se sigue usando: un fallo pasajero de la base no tumba el panel.
     if (hasWorkspace()) {
@@ -65,13 +75,16 @@ export async function saveCompetitors(list: CompetitorInput[]): Promise<void> {
   const domains = new Set(items.map((c) => c.domain));
   if (domains.size !== items.length) throw new Error("Hay dominios repetidos en la competencia");
   const db = await getDb();
-  const existing = await db.select().from(competitorsTable);
-  for (const row of existing) {
-    if (!domains.has(row.domain) && row.active) await db.update(competitorsTable).set({ active: false }).where(eq(competitorsTable.id, row.id));
-  }
-  for (const [sort, c] of items.entries()) {
-    const values = { name: c.name, city: c.city, mapsQuery: c.mapsQuery, instagram: c.instagram ?? null, active: true, sort };
-    await db.insert(competitorsTable).values({ domain: c.domain, ...values })
-      .onConflictDoUpdate({ target: competitorsTable.domain, set: values });
+  // Dos sentencias en vez de una por competidor: menos viajes a la base y menos ventana para quedar a medias.
+  const keep = [...domains];
+  await db.update(competitorsTable).set({ active: false })
+    .where(keep.length ? and(eq(competitorsTable.active, true), notInArray(competitorsTable.domain, keep)) : eq(competitorsTable.active, true));
+  if (items.length) {
+    await db.insert(competitorsTable)
+      .values(items.map((c, sort) => ({ domain: c.domain, name: c.name, city: c.city, mapsQuery: c.mapsQuery, instagram: c.instagram ?? null, active: true, sort })))
+      .onConflictDoUpdate({
+        target: competitorsTable.domain,
+        set: { name: sql`excluded.name`, city: sql`excluded.city`, mapsQuery: sql`excluded.maps_query`, instagram: sql`excluded.instagram`, active: sql`excluded.active`, sort: sql`excluded.sort` },
+      });
   }
 }
