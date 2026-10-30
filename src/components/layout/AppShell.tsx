@@ -138,7 +138,7 @@ export function AppShell({ viewer, logout, nav, children }: { viewer: Viewer; lo
         </SheetContent>
       </Sheet>
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-20 flex h-14 items-center gap-3 rounded-t-[20px] border-b border-border bg-background/90 px-4 backdrop-blur md:px-8">
+        <header className="sticky top-0 z-20 flex h-14 items-center gap-3 rounded-t-[20px] border-b border-border/60 glass-bar px-4 md:px-8">
           <button type="button" onClick={() => setOpen(true)} aria-label={t.shell.openNav} className="grid h-9 w-9 place-items-center rounded-md hover:bg-card lg:hidden">
             <Menu className="h-5 w-5" aria-hidden />
           </button>
