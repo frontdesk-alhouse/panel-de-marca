@@ -124,7 +124,7 @@ export default async function CalificacionPage() {
           Una nota de 0 a 100 de qué tan bien está funcionando tu marketing, en siete áreas. Cada métrica se compara con la industria
           o con una meta propia y queda en verde, amarillo o rojo. Toca cualquier área para ver qué la sube.
         </p>
-        <ScoreHeadline overall={scorecard.overall} coverage={scorecard.coverage} isBaseline={isBaseline} windowFrom={windowFrom} endDate={endDate} />
+        <ScoreHeadline overall={scorecard.overall} weightCoverage={scorecard.weightCoverage} dimensions={scorecard.dimensions} isBaseline={isBaseline} windowFrom={windowFrom} endDate={endDate} />
       </header>
 
       <ChangeLogSection />

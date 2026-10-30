@@ -4,15 +4,21 @@ import { useId, useState } from "react";
 import { Area, AreaChart, CartesianGrid, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Segmented } from "@/components/dash/Segmented";
 import { formatNumber, formatShortDate } from "@/lib/format";
+import { explainChange, type ExplainMeta } from "@/lib/scorecard/explain-change";
 
-export interface HistoryPoint { date: string; overall: number | null; dimensions: Record<string, number | null> }
+export interface HistoryPoint { date: string; overall: number | null; dimensions: Record<string, number | null>; metrics: Record<string, number | null> }
 export interface ChangeMark { id: number; n: number; date: string; kind: "propio" | "externo"; title: string; area: string }
 
 type Props = {
   points: HistoryPoint[];
   changes: ChangeMark[];
   dimensions: { id: string; label: string }[];
+  meta: ExplainMeta;
 };
+
+const toneFor = (v: number | null) => (v === null ? "var(--series-1)" : v >= 75 ? "var(--good)" : v >= 45 ? "var(--warn)" : "var(--bad)");
+const DIRECTION_MARK = { up: "▲", down: "▼", neutral: "•" } as const;
+const DIRECTION_CLASS = { up: "text-good-ink", down: "text-bad-ink", neutral: "text-muted-foreground" } as const;
 
 const KIND_STROKE: Record<ChangeMark["kind"], { stroke: string; dash?: string; label: string }> = {
   propio: { stroke: "var(--foreground)", label: "Cambio propio" },
@@ -36,16 +42,29 @@ function TooltipBox({ active, payload, label, changes }: { active?: boolean; pay
  * La calificación día a día con los cambios encima: ver si una subida coincide con algo
  * que hizo la marca, con algo de afuera, o con nada.
  */
-export function ScoreHistory({ points, changes, dimensions }: Props) {
+export function ScoreHistory({ points, changes, dimensions, meta }: Props) {
   const [series, setSeries] = useState("overall");
+  const [picked, setPicked] = useState<string | null>(null);
   const gid = `score-${useId().replace(/:/g, "")}`;
-  const data = points.map((p) => ({ date: p.date, value: series === "overall" ? p.overall : p.dimensions[series] ?? null }));
-  // El color sigue a la nota actual: verde ≥ 75, ámbar ≥ 45, rojo debajo (mismas bandas que las tarjetas).
-  const last = [...data].reverse().find((d) => d.value !== null)?.value ?? null;
-  const tone = last === null ? "var(--series-1)" : last >= 75 ? "var(--good)" : last >= 45 ? "var(--warn)" : "var(--bad)";
+  const valueOf = (p: HistoryPoint, key: string) => (key === "overall" ? p.overall : p.dimensions[key] ?? null);
+  const data = points.map((p) => ({ date: p.date, value: valueOf(p, series) }));
+  // El día que se explica: el que se tocó en la gráfica o, por defecto, el más reciente con nota.
+  const lastDated = [...data].reverse().find((d) => d.value !== null);
+  const date = picked && data.some((d) => d.date === picked) ? picked : lastDated?.date ?? data[data.length - 1]?.date;
+  const shown = data.find((d) => d.date === date)?.value ?? null;
+  // El color sigue a la nota del día elegido: verde ≥ 75, ámbar ≥ 45, rojo debajo (mismas bandas que las tarjetas).
+  const tone = toneFor(shown);
+  const explanation = date ? explainChange(points, date, series, meta) : null;
+  const seriesLabel = series === "overall" ? "General" : dimensions.find((d) => d.id === series)?.label ?? series;
   const visible = changes.filter((c) => series === "overall" || c.area === "general" || c.area === series);
   const axis = { stroke: "var(--muted-foreground)", fontSize: 11, tickLine: false, axisLine: false } as const;
-  const items = [{ key: "overall", label: "General" }, ...dimensions.map((d) => ({ key: d.id, label: d.label }))];
+  // Cada pestaña lleva su nota del día elegido: cambiar de área no obliga a buscarla abajo.
+  const noteOn = (key: string) => {
+    const p = points.find((x) => x.date === date);
+    const v = p ? valueOf(p, key) : null;
+    return v === null ? "sin nota" : formatNumber(v);
+  };
+  const items = [{ key: "overall", label: "General", meta: noteOn("overall") }, ...dimensions.map((d) => ({ key: d.id, label: d.label, meta: noteOn(d.id) }))];
 
   if (points.length < 2) {
     return <p className="rounded-2xl bg-card p-5 text-sm text-muted-foreground">La gráfica aparece cuando haya al menos dos días de calificación guardada. Se guarda una por día.</p>;
@@ -53,9 +72,38 @@ export function ScoreHistory({ points, changes, dimensions }: Props) {
   return (
     <div className="space-y-4 rounded-2xl bg-card p-5">
       <Segmented items={items} value={series} onChange={setSeries} label="Qué calificación ver" size="sm" />
+      <div className="flex flex-wrap items-end gap-x-8 gap-y-3" aria-live="polite">
+        <div>
+          <p className="font-mono text-[11px] uppercase text-muted-foreground">{seriesLabel} · {date ? formatShortDate(date) : ""}</p>
+          <p className="font-display text-6xl leading-none tabular-nums" style={{ color: shown === null ? "var(--muted-foreground)" : tone }}>
+            {shown === null ? "–" : formatNumber(shown)}<span className="ml-1 align-top text-2xl text-muted-foreground">/100</span>
+          </p>
+          {shown === null && <p className="mt-1 max-w-[36ch] text-xs text-muted-foreground">Ese día no hubo datos suficientes para calificar esta área. No es un cero: es que no se puede saber.</p>}
+        </div>
+        {explanation && explanation.previousDate && (
+          <div className="min-w-0 max-w-[60ch] flex-1 space-y-1.5 text-sm">
+            <p>
+              {explanation.delta === null
+                ? <span className="text-muted-foreground">Sin nota comparable con el {formatShortDate(explanation.previousDate)}.</span>
+                : explanation.delta === 0
+                  ? <span className="text-muted-foreground">Igual que el {formatShortDate(explanation.previousDate)} ({formatNumber(explanation.previousValue as number)}).</span>
+                  : <><span className={explanation.delta > 0 ? "font-medium text-good-ink" : "font-medium text-bad-ink"}>{explanation.delta > 0 ? "Mejoró" : "Empeoró"} {formatNumber(Math.abs(explanation.delta), 1)} puntos</span> <span className="text-muted-foreground">desde el {formatShortDate(explanation.previousDate)} ({formatNumber(explanation.previousValue as number)}).</span></>}
+            </p>
+            {explanation.drivers.length > 0
+              ? <ul className="space-y-0.5">
+                  {explanation.drivers.map((d) => (
+                    <li key={d.label} className="flex gap-2"><span aria-hidden className={DIRECTION_CLASS[d.direction]}>{DIRECTION_MARK[d.direction]}</span><span><span className="font-medium">{d.label}</span> <span className="text-muted-foreground">{d.change}</span></span></li>
+                  ))}
+                </ul>
+              : <p className="text-xs text-muted-foreground">Ninguna métrica cambió de color en ese lapso.</p>}
+          </div>
+        )}
+      </div>
+      <p className="text-xs text-muted-foreground">Toca un día de la gráfica para ver su nota y qué la movió.</p>
       <div className="h-[280px] w-full">
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={data} margin={{ top: 18, right: 12, bottom: 0, left: 0 }}>
+          <AreaChart data={data} margin={{ top: 18, right: 12, bottom: 0, left: 0 }} style={{ cursor: "pointer" }}
+            onClick={(e) => { if (e?.activeLabel) setPicked(String(e.activeLabel)); }}>
             <defs>
               <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor={tone} stopOpacity={0.35} />
@@ -66,16 +114,17 @@ export function ScoreHistory({ points, changes, dimensions }: Props) {
             <XAxis dataKey="date" tickFormatter={formatShortDate} minTickGap={28} {...axis} />
             <YAxis width={32} domain={[0, 100]} ticks={[0, 25, 50, 75, 100]} {...axis} />
             <Tooltip content={<TooltipBox changes={visible} />} cursor={{ stroke: "var(--muted-foreground)", strokeDasharray: "3 3" }} />
+            {date && <ReferenceLine x={date} stroke={tone} strokeWidth={2} />}
             {visible.map((c) => (
               <ReferenceLine key={c.id} x={c.date} stroke={KIND_STROKE[c.kind].stroke} strokeDasharray={KIND_STROKE[c.kind].dash} strokeWidth={1}
                 label={{ value: `#${c.n}`, position: "top", fontSize: 10, fill: "var(--muted-foreground)" }} />
             ))}
-            <Area type="monotone" dataKey="value" stroke={tone} strokeWidth={2.25} fill={`url(#${gid})`} fillOpacity={1} activeDot={{ r: 4 }} connectNulls isAnimationActive={false} />
+            <Area type="monotone" dataKey="value" stroke={tone} strokeWidth={2.25} fill={`url(#${gid})`} fillOpacity={1} dot={{ r: 2.5, strokeWidth: 0, fill: tone }} activeDot={{ r: 4 }} connectNulls={false} isAnimationActive={false} />
           </AreaChart>
         </ResponsiveContainer>
       </div>
       <ul className="flex flex-wrap gap-x-5 gap-y-1 text-xs text-muted-foreground" aria-label="Leyenda">
-        <li className="flex items-center gap-1.5"><span className="h-0.5 w-4" style={{ background: tone }} />Calificación (0 a 100; el color sigue a la nota actual)</li>
+        <li className="flex items-center gap-1.5"><span className="h-0.5 w-4" style={{ background: tone }} />Calificación (0 a 100; el color sigue a la nota del día elegido). Los huecos son días sin datos suficientes</li>
         <li className="flex items-center gap-1.5"><span className="h-3 w-0 border-l border-foreground" />{KIND_STROKE.propio.label}</li>
         <li className="flex items-center gap-1.5"><span className="h-3 w-0 border-l border-dashed border-muted-foreground" />{KIND_STROKE.externo.label}</li>
       </ul>

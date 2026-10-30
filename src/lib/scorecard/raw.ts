@@ -50,3 +50,28 @@ export function delta(current: number | null, previous: number | null): number |
   if (current === null || previous === null || previous === 0) return null;
   return (current - previous) / previous;
 }
+
+/** Totales que, en una fuente que sí está midiendo, «sin filas» significa cero y no «sin datos». */
+export const VOLUME_METRICS: Record<string, string[]> = {
+  ga4: ["sessions", "engaged_sessions", "key_events"],
+  gsc: ["impressions", "clicks"],
+  gads: ["impressions", "clicks", "conversions"],
+};
+
+/**
+ * Una fuente conectada que no registró nada en la ventana no está «sin datos»: tuvo cero.
+ * Sin esto, un sitio sin tráfico no calificaba en rojo, simplemente desaparecía de la nota.
+ * `active` son las fuentes con filas hasta la fecha evaluada (no se inventan ceros antes de
+ * que la fuente existiera).
+ */
+export function withZeroVolume(rows: AggRow[], active: ReadonlySet<string>): AggRow[] {
+  const extra: AggRow[] = [];
+  for (const source of active) {
+    for (const metric of VOLUME_METRICS[source] ?? []) {
+      if (!rows.some((r) => r.source === source && r.metric === metric && r.dimKey === "")) {
+        extra.push({ source, metric, dimKey: "", value: 0 });
+      }
+    }
+  }
+  return extra.length ? [...rows, ...extra] : rows;
+}

@@ -159,6 +159,8 @@ function pipeline(leads: LeadLite[], out: Inputs) {
 function acquisition(w: RawWindows, out: Inputs) {
   const sessions = sum(w.current, "ga4", "sessions");
   const prevSessions = sum(w.previous, "ga4", "sessions");
+  // Sin mínimo de muestra a propósito: cero sesiones en una fuente que sí mide es un rojo, no un «sin datos».
+  out.sessions_volume = sessions === null ? input(null) : input(sessions, sessions);
   out.sessions_delta = input(delta(sessions, prevSessions), prevSessions ?? 0);
   out.engagement_rate = input(ratio(sum(w.current, "ga4", "engaged_sessions"), sessions), sessions ?? 0);
   const paid = sum(w.current, "ga4", "sessions", (k) => k.startsWith("channel:") && PAID_CHANNELS.has(k.slice(8)));

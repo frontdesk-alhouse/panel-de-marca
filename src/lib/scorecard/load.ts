@@ -7,6 +7,7 @@ import { METRICS } from "./benchmarks";
 import { DIMENSIONS, PIPELINE_WINDOW_DAYS, WINDOW_DAYS } from "./config";
 import { buildInputs } from "./inputs";
 import { geoScoreInputs } from "@/lib/geo/store";
+import { withZeroVolume } from "./raw";
 import { rankLevers, type Lever } from "./priorities";
 import { computeKpis, type Kpi } from "@/lib/kpis";
 import { computeScorecard } from "./score";
@@ -41,7 +42,15 @@ export async function loadScorecard(endDate = addDays(todayIso(), -1)): Promise<
     geoScoreInputs(endDate),
   ]);
 
-  const windows = { current: cur, previous: prev, pipeline: pipe, latest, latestAtPreviousEnd: latestPrev };
+  const active = new Set(latest.map((r) => r.source));
+  const activePrev = new Set(latestPrev.map((r) => r.source));
+  const windows = {
+    current: withZeroVolume(cur, active),
+    previous: withZeroVolume(prev, activePrev),
+    pipeline: withZeroVolume(pipe, active),
+    latest,
+    latestAtPreviousEnd: latestPrev,
+  };
   const inputs = buildInputs(
     windows,
     leadRows.map((l) => ({
@@ -66,7 +75,7 @@ export async function loadScorecard(endDate = addDays(todayIso(), -1)): Promise<
 }
 
 /** Guarda la calificación del día para verla en el tiempo. Idempotente por fecha. */
-export async function snapshotScorecard(endDate?: string, opts: { keepExisting?: boolean } = {}) {
+export async function snapshotScorecard(endDate?: string) {
   const loaded = await loadScorecard(endDate);
   const { scorecard } = loaded;
   const values = {
@@ -80,8 +89,6 @@ export async function snapshotScorecard(endDate?: string, opts: { keepExisting?:
     })),
   };
   const db = await getDb();
-  // Al reconstruir el historial no se pisa lo que ya guardó el cron (eso sí refleja el día real).
-  if (opts.keepExisting) await db.insert(scores).values(values).onConflictDoNothing({ target: scores.periodEnd });
-  else await db.insert(scores).values(values).onConflictDoUpdate({ target: scores.periodEnd, set: values });
+  await db.insert(scores).values(values).onConflictDoUpdate({ target: scores.periodEnd, set: values });
   return loaded;
 }

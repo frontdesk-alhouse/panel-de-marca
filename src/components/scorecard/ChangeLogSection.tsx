@@ -6,6 +6,7 @@ import { BackfillButton } from "./BackfillButton";
 import { listChanges, scoreHistory } from "@/lib/changes/store";
 import { changeImpact, IMPACT_WINDOW_DAYS } from "@/lib/changes/impact";
 import { DIMENSIONS } from "@/lib/scorecard/config";
+import { METRICS } from "@/lib/scorecard/benchmarks";
 import { todayIso } from "@/lib/dates";
 import { deleteChangeAction } from "@/app/calificacion/actions";
 
@@ -23,6 +24,10 @@ export async function ChangeLogSection() {
   const numbered = [...changeRows].reverse().map((c, i) => ({ ...c, n: i + 1 }));
   const points = history.map((h) => ({ date: h.date, value: h.overall }));
   const dimLabels = DIMENSIONS.map((d) => ({ id: d.id, label: d.label }));
+  const meta = {
+    dimensions: DIMENSIONS.map((d) => ({ id: d.id, label: d.label, weight: d.weight })),
+    metrics: METRICS.map((m) => ({ id: m.id, label: m.label, dimension: m.dimension })),
+  };
   return (
     <section aria-labelledby="historia-h" className="space-y-4">
       <div className="space-y-1 px-1">
@@ -32,10 +37,10 @@ export async function ChangeLogSection() {
           Que suba después de un cambio es coincidencia en el tiempo, no prueba: Google y las plataformas también cambian cómo miden.
         </p>
         <p className="flex flex-wrap items-center gap-2 pt-1 text-xs text-muted-foreground">
-          ¿Faltan días en la gráfica? <BackfillButton /> Se recalcula con los datos guardados; algunas fuentes (PageSpeed, Instagram) solo tienen la foto más reciente.
+          ¿Faltan días o ves notas que no cuadran? <BackfillButton /> Recalcula los 90 días con los datos guardados y las reglas actuales; algunas fuentes (PageSpeed, Instagram) solo tienen la foto más reciente.
         </p>
       </div>
-      <ScoreHistory points={history} changes={numbered.map((c) => ({ id: c.id, n: c.n, date: c.date, kind: c.kind, title: c.title, area: c.area }))} dimensions={dimLabels} />
+      <ScoreHistory points={history} meta={meta} changes={numbered.map((c) => ({ id: c.id, n: c.n, date: c.date, kind: c.kind, title: c.title, area: c.area }))} dimensions={dimLabels} />
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <div className="space-y-3 rounded-2xl bg-card p-5">
           <h3 className="font-medium">Registrar cambios</h3>

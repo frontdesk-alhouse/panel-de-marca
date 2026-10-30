@@ -6,7 +6,7 @@ import { toast } from "sonner";
 
 const DAYS = 90;
 
-/** Completa los días que faltan de los últimos 90 con los datos ya guardados (no pisa los existentes). */
+/** Recalcula los últimos 90 días con los datos ya guardados y reemplaza lo que hubiera. */
 export function BackfillButton() {
   const router = useRouter();
   const [isPending, start] = useTransition();
@@ -16,7 +16,7 @@ export function BackfillButton() {
     const res = await fetch("/api/scores", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ backfillDays: DAYS }) });
     const body = (await res.json().catch(() => ({}))) as { saved?: number; error?: string };
     if (!res.ok) return setError(body.error ?? "No se pudo reconstruir.");
-    toast.success(body.saved ? `Historial completado: ${body.saved} días nuevos.` : "No faltaba ningún día.");
+    toast.success(`Historial recalculado: ${body.saved ?? 0} días.`);
     router.refresh();
   });
   return (

@@ -3,6 +3,8 @@ import { z } from "zod";
 import { getDb } from "@/db";
 import { CHANGE_AREAS, CHANGE_KINDS, changes, scores } from "@/db/schema";
 import { addDays, todayIso } from "@/lib/dates";
+import { DIMENSIONS } from "@/lib/scorecard/config";
+import { regradeDay, type StoredDimension } from "@/lib/scorecard/history";
 
 export const ChangeSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Fecha AAAA-MM-DD"),
@@ -37,16 +39,31 @@ export async function deleteChange(id: number): Promise<boolean> {
   return rows.length > 0;
 }
 
-export interface ScoreHistoryPoint { date: string; overall: number | null; coverage: number; dimensions: Record<string, number | null> }
+export interface ScoreHistoryPoint {
+  date: string;
+  overall: number | null;
+  coverage: number;
+  dimensions: Record<string, number | null>;
+  /** Nota de cada métrica ese día (100 verde · 50 amarillo · 0 rojo); null si no se calificó */
+  metrics: Record<string, number | null>;
+}
 
-/** Calificaciones guardadas (una por día), de la más vieja a la más nueva. */
+const BAND_SCORE = { green: 100, yellow: 50, red: 0 } as const;
+const WEIGHTS = Object.fromEntries(DIMENSIONS.map((d) => [d.id, d.weight]));
+
+/**
+ * Calificaciones guardadas (una por día), de la más vieja a la más nueva. Se vuelven a calificar con
+ * las reglas de cobertura actuales para que un día viejo con «100» sobre dos métricas no engañe.
+ */
 export async function scoreHistory(days = 365): Promise<ScoreHistoryPoint[]> {
   const db = await getDb();
   const rows = await db.select().from(scores).where(gte(scores.periodEnd, addDays(todayIso(), -days))).orderBy(asc(scores.periodEnd));
-  return rows.map((r) => ({
-    date: String(r.periodEnd),
-    overall: r.overall,
-    coverage: r.coverage,
-    dimensions: Object.fromEntries(((r.dimensions as { id: string; score: number | null }[]) ?? []).map((d) => [d.id, d.score])),
-  }));
+  return rows.map((r) => {
+    const day = regradeDay((r.dimensions as StoredDimension[]) ?? [], WEIGHTS);
+    const metrics = Object.fromEntries(
+      ((r.metrics as { id: string; status: string; band: keyof typeof BAND_SCORE | null }[]) ?? [])
+        .map((m) => [m.id, m.status === "scored" && m.band ? BAND_SCORE[m.band] : null]),
+    );
+    return { date: String(r.periodEnd), overall: day.overall, coverage: r.coverage, dimensions: day.dimensions, metrics };
+  });
 }

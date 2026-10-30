@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { bandFor, computeScorecard } from "./score";
+import { bandFor, computeScorecard as compute, DEFAULT_COVERAGE_RULES, type CoverageRules } from "./score";
 import { rankLevers } from "./priorities";
 import { METRICS } from "./benchmarks";
 import { DIMENSIONS } from "./config";
@@ -19,6 +19,10 @@ test("bandas en los bordes, ambas direcciones", () => {
   assert.equal(bandFor(60, down), "yellow");
   assert.equal(bandFor(61, down), "red");
 });
+
+// Los casos a mano de abajo prueban la aritmética, no la compuerta: reglas sin mínimo.
+const OPEN: CoverageRules = { minDimensionCoverage: 0, minWeightCoverage: 0 };
+const computeScorecard = (i: Parameters<typeof compute>[0], m: MetricDefinition[], d: DimensionDefinition[]) => compute(i, m, d, OPEN);
 
 const dims: DimensionDefinition[] = [
   { id: "conversion", label: "C", weight: 20, question: "" },
@@ -88,4 +92,27 @@ test("el catálogo real es coherente", () => {
   }
   assert.equal(DIMENSIONS.reduce((a, d) => a + d.weight, 0), 100);
   for (const d of DIMENSIONS) assert.ok(METRICS.some((m) => m.dimension === d.id), `${d.id} sin métricas`);
+});
+
+test("pocas métricas verdes no dan 100: la dimensión y la general quedan sin nota", () => {
+  // Una dimensión de nueve métricas con solo dos calificadas (22 %) no alcanza el 40 %.
+  const many: MetricDefinition[] = Array.from({ length: 9 }, (_, i) => ({ ...up, id: `v${i}`, dimension: "conversion" as const }));
+  const sc = compute({ v0: { value: 0.05 }, v1: { value: 0.05 } }, many, dims, DEFAULT_COVERAGE_RULES);
+  const conv = sc.dimensions.find((d) => d.definition.id === "conversion")!;
+  assert.equal(conv.score, null);
+  assert.equal(conv.partial, 100);
+  assert.equal(sc.overall, null);
+  assert.equal(sc.weightCoverage, 0);
+});
+
+test("la general exige que las dimensiones calificadas cubran el peso mínimo", () => {
+  // Solo conversión (20 de 40) está calificada: 50 % < 60 %.
+  const sc = compute({ c1: { value: 0.05 } }, metrics, dims, DEFAULT_COVERAGE_RULES);
+  assert.equal(sc.dimensions.find((d) => d.definition.id === "conversion")!.score, 100);
+  assert.equal(sc.weightCoverage, 0.5);
+  assert.equal(sc.overall, null);
+  // Con pipeline también (30 de 40 = 75 %) sí se califica.
+  const ok = compute({ c1: { value: 0.05 }, p1: { value: 30 } }, metrics, dims, DEFAULT_COVERAGE_RULES);
+  assert.equal(ok.weightCoverage, 0.75);
+  assert.ok(Math.abs((ok.overall as number) - 2500 / 30) < 1e-9);
 });

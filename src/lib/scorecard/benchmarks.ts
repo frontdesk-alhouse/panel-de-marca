@@ -152,6 +152,12 @@ export const METRICS: MetricDefinition[] = [
 
   // 5 · Adquisición y tráfico
   {
+    id: "sessions_volume", dimension: "adquisicion", label: "Sesiones en los últimos 28 días", unit: "count",
+    direction: "up", green: 1000, yellow: 300,
+    source: "Umbral propio, ajustable: volumen mínimo para que el resto de las métricas del sitio signifique algo", asOf: AS_OF, own: true,
+    ease: 1, lever: "Publicar contenido y activar un canal para que el sitio tenga visitas que medir",
+  },
+  {
     id: "sessions_delta", dimension: "adquisicion", label: "Sesiones vs 28 días previos", unit: "delta",
     direction: "up", green: 0.1, yellow: -0.1, minSample: 100,
     source: "Umbral propio: crecer ≥ 10 % por periodo", asOf: AS_OF, own: true,

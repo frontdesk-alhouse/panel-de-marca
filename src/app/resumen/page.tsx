@@ -151,7 +151,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
               <ArrowRight className="h-4 w-4 text-muted-foreground" aria-hidden />
             </span>
             <span className="font-display text-5xl leading-none">{d.score.scorecard.overall === null ? "-" : formatNumber(d.score.scorecard.overall)}<span className="text-lg text-muted-foreground">/100</span></span>
-            <span className="text-sm text-muted-foreground">Sobre el {formatPct(d.score.scorecard.coverage, 0)} de las métricas contra benchmarks de industria. Sube conforme se conecten más fuentes.</span>
+            <span className="text-sm text-muted-foreground">{d.score.scorecard.overall === null ? "Aún no hay datos suficientes para una nota (se necesita al menos el 60 % del peso)." : `Con áreas que suman el ${formatPct(d.score.scorecard.weightCoverage, 0)} del peso.`} Se completa conforme se conecten más fuentes.</span>
           </Link>
         </div>
       </section>
