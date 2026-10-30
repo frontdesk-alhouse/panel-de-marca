@@ -30,7 +30,8 @@ export interface SetupInitial {
 }
 
 /** La configuración inicial: un paso a la vez, con el avance en la URL (?paso=). */
-export function SetupWizard({ initial }: { initial: SetupInitial }) {
+/** `builders`: «Conecta tu IA a tu sitio», armado en el servidor; va en el paso de conexiones. */
+export function SetupWizard({ initial, builders = null }: { initial: SetupInitial; builders?: React.ReactNode }) {
   // Al guardar la marca puede cambiar el idioma del panel. Se cambia aquí, en el navegador:
   // un router.refresh() volvería a montar el asistente y perdería lo que no está guardado
   // (p. ej. la competencia escrita en el briefing).
@@ -119,7 +120,12 @@ export function SetupWizard({ initial }: { initial: SetupInitial }) {
             autoAddPending={autoAddPending} onAutoAdded={() => setAutoAddPending(false)}
             hasApify={initial.hasApify} onSaved={() => go("conexiones")} onBack={() => go("marca")} />
         )}
-        {step === "conexiones" && <ConnectionsStep states={states} onStates={setStates} googleResult={initial.googleResult} back="/setup" onNext={() => go("actualizar")} onBack={() => go("mercado")} />}
+        {step === "conexiones" && (
+          <div className="space-y-12">
+            <ConnectionsStep states={states} onStates={setStates} googleResult={initial.googleResult} back="/setup" onNext={() => go("actualizar")} onBack={() => go("mercado")} />
+            {builders}
+          </div>
+        )}
         {step === "actualizar" && <SyncStep onBack={() => go("conexiones")} />}
       </main>
     </div>

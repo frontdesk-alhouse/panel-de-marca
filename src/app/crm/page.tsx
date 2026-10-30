@@ -21,18 +21,20 @@ import { MeetingInbox } from "@/components/crm/MeetingInbox";
 export const dynamic = "force-dynamic";
 const FILTERS = [{ key: "abiertos", label: "Abiertos" }, { key: "", label: "Todos" }, ...LEAD_STAGES.map((s) => ({ key: s, label: STAGE_LABELS[s] }))];
 
-export default async function CrmPage({ searchParams }: { searchParams: Promise<{ e?: string }> }) {
+export default async function CrmPage({ searchParams }: { searchParams: Promise<{ e?: string; q?: string }> }) {
   const msg = await getMessages();
   const TITLE = msg.pages["/crm"].title;
   const gate = await pageGate(TITLE);
   if (gate) return gate;
-  const e = (await searchParams).e ?? "abiertos";
+  const params = await searchParams;
+  const e = params.e ?? "abiertos";
+  const q = params.q?.trim().slice(0, 100) ?? "";
   const stage = (FILTERS.some((f) => f.key === e) ? e : "abiertos") as LeadFilters["stage"] | "";
   const today = todayIso();
   let all, shown, inbox;
   try {
     all = (await listLeads()).map((r) => r.lead);
-    shown = await listLeads(stage ? { stage } : {});
+    shown = await listLeads({ ...(stage ? { stage } : {}), ...(q ? { q } : {}) });
     inbox = await pendingProposals().catch((err) => { console.error("[crm] bandeja", err); return []; });
   } catch (err) { console.error("[crm]", err); return <LoadError title={TITLE} />; }
   const s = summarize(all, today);
@@ -62,8 +64,7 @@ export default async function CrmPage({ searchParams }: { searchParams: Promise<
   return (
     <div className="space-y-8">
       <div className="flex flex-wrap items-end justify-between gap-4">
-        <SectionHeader title={TITLE} question={msg.pages["/crm"].question} path="/crm" />
-        <DataSources intro="Los prospectos se capturan aquí (a mano, desde el formulario o reuniones). Su canal de origen se cruza con Google Analytics, Google Ads y Meta Ads para saber qué canal trae clientes." items={[{ label: "CRM del panel", on: true }, "ga4", "gads", "meta"]} />
+        <SectionHeader title={TITLE} question={msg.pages["/crm"].question} path="/crm" sources={<DataSources intro="Los prospectos se capturan aquí (a mano, desde el formulario o reuniones). Su canal de origen se cruza con Google Analytics, Google Ads y Meta Ads para saber qué canal trae clientes." items={[{ label: "CRM del panel", on: true }, "ga4", "gads", "meta"]} />} />
         <Link href="/crm/nuevo" className="h-9 inline-flex items-center rounded-md bg-primary px-4 font-mono text-[11px] uppercase text-primary-foreground hover:opacity-85">+ Nuevo prospecto</Link>
       </div>
       <MeetingInbox rows={inbox} leads={all.map((l) => ({ id: l.id, label: [l.company, l.contactName].filter(Boolean).join(" · ") || `#${l.id}` }))} />
@@ -75,10 +76,18 @@ export default async function CrmPage({ searchParams }: { searchParams: Promise<
           {stat("Tasa de cierre", s.closeRate === null ? "–" : formatPct(s.closeRate, 0))}
           {stat("Valor abierto", s.openValue ? formatMoney(s.openValue) : "–")}
         </div>
-        <Card id="lista" insights={forAnchor(insights, "lista")} title="Prospectos" note="Ordenados por fecha del siguiente paso: lo más urgente arriba.">
+        <Card id="lista" insights={forAnchor(insights, "lista")} title="Prospectos" note="Ordenados por fecha del siguiente paso: lo más urgente arriba. Toca uno para ver su detalle y editarlo.">
+          <form role="search" action="/crm" className="flex max-w-md gap-2">
+            <input type="hidden" name="e" value={stage} />
+            <label htmlFor="crm-q" className="sr-only">Buscar prospecto</label>
+            <input id="crm-q" name="q" defaultValue={q} placeholder="Buscar por empresa, contacto, correo o teléfono" maxLength={100}
+              className="h-9 min-w-0 flex-1 rounded-lg bg-background px-3 text-sm outline-none ring-ring focus-visible:ring-2" />
+            <button type="submit" className="h-9 rounded-lg bg-background px-3 text-sm hover:bg-secondary">Buscar</button>
+            {q && <Link href={`/crm?e=${stage}`} className="inline-flex h-9 items-center px-2 text-sm text-muted-foreground hover:text-foreground">Limpiar</Link>}
+          </form>
           <nav aria-label="Filtrar por etapa" className="flex flex-wrap gap-1">
             {FILTERS.map((f) => (
-              <Link key={f.label} href={f.key ? `/crm?e=${f.key}` : "/crm?e="} aria-current={f.key === stage ? "true" : undefined}
+              <Link key={f.label} href={`/crm?e=${f.key}${q ? `&q=${encodeURIComponent(q)}` : ""}`} aria-current={f.key === stage ? "true" : undefined}
                 className={cn("h-7 inline-flex items-center rounded-md px-3 font-mono text-[11px] uppercase transition", f.key === stage ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:text-foreground")}>
                 {f.label}{f.key && f.key !== "abiertos" && s.byStage[f.key] ? ` · ${s.byStage[f.key]}` : ""}
               </Link>
@@ -99,7 +108,7 @@ export default async function CrmPage({ searchParams }: { searchParams: Promise<
             ]} />
           ) : (
             <p className="rounded-lg bg-background px-4 py-8 text-center text-sm text-muted-foreground">
-              No hay prospectos aquí. <Link href="/crm/nuevo" className="underline">Agrega el primero</Link>.
+              {q ? <>Ningún prospecto coincide con «{q}».</> : <>No hay prospectos aquí. <Link href="/crm/nuevo" className="underline">Agrega el primero</Link>.</>}
             </p>
           )}
         </Card>

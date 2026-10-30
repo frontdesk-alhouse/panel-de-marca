@@ -32,7 +32,7 @@ export default async function EstrategiaPage() {
 
   return (
     <div className="space-y-10">
-      <SectionHeader title={TITLE} question={msg.pages["/estrategia"].question(ws().brand.name)} path="/estrategia" />
+      <SectionHeader title={TITLE} question={msg.pages["/estrategia"].question(ws().brand.name)} path="/estrategia" sources={<DataSources intro="Claude arma esta estrategia leyendo todo el panel: tráfico, SEO, anuncios, redes, competencia, CRM y la calificación, más el contexto de la marca. Entre más fuentes conectadas, mejor la propuesta." items={["ga4", "gsc", "gads", "meta", "instagram", "clarity", "comp", "serp", { label: "CRM del panel", on: true }, { label: "Contexto de la marca", on: true }]} />} />
       {!s ? <StrategyStart hasStrategy={false} /> : (
         <>
           <section aria-labelledby="apuesta-h" className="space-y-6">
@@ -117,7 +117,6 @@ export default async function EstrategiaPage() {
           </details>
         </>
       )}
-      <DataSources intro="Claude arma esta estrategia leyendo todo el panel: tráfico, SEO, anuncios, redes, competencia, CRM y la calificación, más el contexto de la marca. Entre más fuentes conectadas, mejor la propuesta." items={["ga4", "gsc", "gads", "meta", "instagram", "clarity", "comp", "serp", { label: "CRM del panel", on: true }, { label: "Contexto de la marca", on: true }]} />
     </div>
   );
 }

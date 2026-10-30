@@ -4,7 +4,7 @@ import { useWorkspace } from "@/components/providers/WorkspaceProvider";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
-import { LogOut, Menu, PanelLeftClose, PanelLeftOpen, Sparkles } from "lucide-react";
+import { LogOut, Menu, PanelLeftClose, PanelLeftOpen, Settings, Sparkles } from "lucide-react";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { SidebarNav, useCrumbs, type NavOptions } from "./Sidebar";
 import { useT } from "@/i18n/client";
@@ -43,12 +43,24 @@ function Brand({ compact = false }: { compact?: boolean }) {
   );
 }
 
+/** Engrane fijo junto al nombre: Ajustes (qué está conectado) siempre a un clic. */
+function SettingsLink({ className = "" }: { className?: string }) {
+  const t = useT();
+  return (
+    <Link href="/ajustes" aria-label={t.nav.settings} title={t.nav.settings}
+      className={`grid h-8 w-8 place-items-center rounded-md text-muted-foreground transition-colors hover:text-foreground ${className}`}>
+      <Settings className="h-4 w-4" aria-hidden />
+    </Link>
+  );
+}
+
 function UserBox({ viewer, logout, compact = false }: { viewer: Viewer; logout?: () => Promise<void>; compact?: boolean }) {
   const t = useT();
   if (compact) {
     return (
       <div className="flex flex-col items-center gap-1">
         <span className="grid h-8 w-8 place-items-center rounded-full bg-primary font-mono text-[11px] text-primary-foreground" title={viewer.name}>{initials(viewer.name)}</span>
+        <SettingsLink className="hover:bg-card" />
         <AppearanceMenu />
         <ThemeToggle />
         {logout && (
@@ -63,6 +75,7 @@ function UserBox({ viewer, logout, compact = false }: { viewer: Viewer; logout?:
     <div className="flex items-center gap-2 rounded-xl bg-card p-2">
       <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-primary font-mono text-[11px] text-primary-foreground" aria-hidden>{initials(viewer.name)}</span>
       <span className="min-w-0 flex-1 truncate text-sm" title={viewer.email}>{viewer.name}</span>
+      <SettingsLink className="hover:bg-background" />
       <AppearanceMenu />
       <ThemeToggle />
       {logout && (

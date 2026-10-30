@@ -55,8 +55,7 @@ export default async function NegocioPage() {
 
   return (
     <div className="space-y-10">
-      <SectionHeader title={TITLE} question={msg.pages["/negocio"].question} path="/negocio" />
-      <DataSources intro="Junta datos de varias fuentes: los clientes y el ingreso salen del CRM; la inversión, de Google Ads y Meta Ads; las visitas y los contactos, de Google Analytics." items={[{ label: "CRM del panel", on: true }, "gads", "meta", "ga4"]} />
+      <SectionHeader title={TITLE} question={msg.pages["/negocio"].question} path="/negocio" sources={<DataSources intro="Junta datos de varias fuentes: los clientes y el ingreso salen del CRM; la inversión, de Google Ads y Meta Ads; las visitas y los contactos, de Google Analytics." items={[{ label: "CRM del panel", on: true }, "gads", "meta", "ga4"]} />} />
 
       {b.totalLeads < 10 && (
         <p className="max-w-[70ch] rounded-xl bg-card px-4 py-3 text-sm">

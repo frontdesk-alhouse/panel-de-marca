@@ -8,7 +8,7 @@ export type Lead = typeof leads.$inferSelect;
 export type Activity = typeof leadActivities.$inferSelect;
 type Stage = (typeof LEAD_STAGES)[number];
 
-export interface LeadFilters { stage?: Stage | "abiertos"; owner?: string }
+export interface LeadFilters { stage?: Stage | "abiertos"; owner?: string; /** Busca en empresa, contacto, correo y teléfono. */ q?: string }
 
 /** Prospectos (sin los de prueba), con su última actividad. */
 export async function listLeads(f: LeadFilters = {}) {
@@ -17,6 +17,12 @@ export async function listLeads(f: LeadFilters = {}) {
   if (f.stage === "abiertos") conds.push(sql`${leads.stage} not in ('cerrado', 'perdido')`);
   else if (f.stage) conds.push(eq(leads.stage, f.stage));
   if (f.owner) conds.push(eq(leads.owner, f.owner));
+  const q = f.q?.trim().slice(0, 100);
+  if (q) {
+    // Comodines del usuario escapados: «50%» busca el texto, no «cualquier cosa».
+    const like = `%${q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+    conds.push(sql`(${leads.company} ilike ${like} or ${leads.contactName} ilike ${like} or ${leads.email} ilike ${like} or ${leads.phone} ilike ${like})`);
+  }
   const last = db.select({ leadId: leadActivities.leadId, lastAt: sql<Date>`max(${leadActivities.happenedAt})`.as("last_at") })
     .from(leadActivities).groupBy(leadActivities.leadId).as("last");
   return db.select({ lead: leads, lastActivityAt: last.lastAt }).from(leads)
@@ -62,6 +68,20 @@ export async function updateLead(id: number, input: LeadInput): Promise<boolean>
   await db.update(leads).set({
     ...rest, ...(createdAt ? { createdAt } : {}),
     qualified: input.stage === "nuevo" ? current.qualified : input.stage !== "perdido" || current.qualified,
+    proposalAt: derived.proposalAt, closedAt: derived.closedAt, outcome: derived.outcome, updatedAt: new Date(),
+  }).where(eq(leads.id, id));
+  return true;
+}
+
+/** Cambia solo la etapa (botones rápidos del pop-up), con las mismas fechas y resultado derivados que el formulario. */
+export async function updateLeadStage(id: number, stage: Stage): Promise<boolean> {
+  const db = await getDb();
+  const [current] = await db.select({ proposalAt: leads.proposalAt, closedAt: leads.closedAt, qualified: leads.qualified }).from(leads).where(eq(leads.id, id));
+  if (!current) return false;
+  const derived = deriveFromStage(stage, current);
+  await db.update(leads).set({
+    stage,
+    qualified: stage === "nuevo" ? current.qualified : stage !== "perdido" || current.qualified,
     proposalAt: derived.proposalAt, closedAt: derived.closedAt, outcome: derived.outcome, updatedAt: new Date(),
   }).where(eq(leads.id, id));
   return true;

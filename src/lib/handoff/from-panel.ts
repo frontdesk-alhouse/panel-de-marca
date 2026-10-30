@@ -10,6 +10,8 @@ import type { Insight } from "@/lib/analytics/insights";
 import type { Frente, StoredWeekly } from "@/lib/assistant/weekly";
 import type { Strategy } from "@/lib/assistant/strategy";
 import type { Evidence, HandoffInput, HandoffItem, HandoffLang, Impact } from "./build";
+import { builderFor } from "@/lib/builders/catalog";
+import { sitePlatform } from "@/lib/builders/platform";
 
 /**
  * Adaptadores del panel a «Copiar para Claude». El servidor arma todas las acciones con
@@ -36,7 +38,9 @@ interface Base {
 }
 
 async function finish(base: Base): Promise<HandoffPayload> {
-  const [t, lang, panelUrl] = await Promise.all([getMessages(), getLang(), requestOrigin()]);
+  // En qué está hecho el sitio: así el texto dice cómo conectar la IA a su constructor.
+  const [t, lang, panelUrl, platform] = await Promise.all([getMessages(), getLang(), requestOrigin(), sitePlatform().catch(() => null)]);
+  const builder = builderFor(platform);
   const w = ws();
   const skills = [...new Set(base.skills)].filter((id) => getSkill(id)).map((id) => ({
     id,
@@ -58,6 +62,7 @@ async function finish(base: Base): Promise<HandoffPayload> {
       skills,
       panelUrl,
       today: todayIso(),
+      ...(builder ? { builder } : {}),
     },
   };
 }

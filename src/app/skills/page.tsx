@@ -9,6 +9,8 @@ import { requestOrigin } from "@/lib/http/origin";
 import { CopyButton } from "@/components/handoff/CopyButton";
 import { SectionInfo } from "@/components/layout/SectionInfo";
 import { ShareButton } from "@/components/handoff/ShareButton";
+import { BuilderConnect } from "@/components/builders/BuilderConnect";
+import { sitePlatform } from "@/lib/builders/platform";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +21,7 @@ export default async function SkillsPage() {
   const origin = await requestOrigin();
   const dimLabel = (id: string) => DIMENSIONS.find((d) => d.id === id)?.label ?? id;
   const available = SKILLS.filter((k) => existsSync(path.join(SKILLS_DIR, k.id, "SKILL.md")));
+  const platform = await sitePlatform().catch(() => null);
 
   return (
     <div className="space-y-12">
@@ -30,6 +33,8 @@ export default async function SkillsPage() {
         </div>
         <p className="max-w-[65ch] text-muted-foreground">{s.intro}</p>
       </header>
+
+      <BuilderConnect platform={platform} />
 
       <ul className="grid gap-5 lg:grid-cols-3">
         {available.map((k) => {

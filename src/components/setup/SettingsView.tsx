@@ -16,8 +16,10 @@ const TABS = ["conexiones", "marca", "mercado"] as const;
 type Tab = (typeof TABS)[number];
 
 /** /ajustes: conexiones, ficha de marca y mercado, con las mismas piezas que la configuración inicial. */
-export function SettingsView({ form: initialForm, competitors: initialCompetitors, states, hasApify, googleResult, initialTab = "conexiones" }: {
+export function SettingsView({ form: initialForm, competitors: initialCompetitors, states, hasApify, googleResult, initialTab = "conexiones", status }: {
   form: BrandForm; competitors: CompetitorInput[]; states: IntegrationState[]; hasApify: boolean; googleResult: string | null; initialTab?: Tab;
+  /** Qué está conectado (se arma en el servidor): va justo debajo del título. */
+  status?: React.ReactNode;
 }) {
   const router = useRouter();
   const t = useT();
@@ -36,6 +38,7 @@ export function SettingsView({ form: initialForm, competitors: initialCompetitor
         </div>
         <Link href="/setup?paso=sitio" className="text-sm underline underline-offset-2">{c.redo}</Link>
       </header>
+      {status}
       <div role="tablist" aria-label={c.tabsLabel} className="inline-flex gap-1 rounded-xl bg-card p-1">
         {TABS.map((id, i) => (
           <button key={id} role="tab" type="button" aria-selected={tab === id} aria-controls={`panel-${id}`} id={`tab-${id}`} onClick={() => setTab(id)}

@@ -1,3 +1,5 @@
+import { connectInstructions, type Builder } from "../builders/catalog";
+
 /**
  * «Copiar para Claude»: convierte un análisis del panel en instrucciones listas para
  * pegar en Claude Code (que puede tocar el código del sitio y correr scripts), en la
@@ -59,6 +61,8 @@ export interface HandoffInput {
   panelUrl: string;
   /** Fecha de hoy para el ejemplo del bloque de cambios (por defecto, la de los datos). */
   today?: string;
+  /** Constructor del sitio (detectado): el texto dice cómo conectar la IA a su MCP oficial. */
+  builder?: Builder;
 }
 
 /** Áreas válidas del bloque de cambios (las mismas de la bitácora). */
@@ -210,6 +214,8 @@ export function buildHandoff(input: HandoffInput, target: HandoffTarget, lang: H
   if (input.brand.city) out.push(`- ${t.city}: ${input.brand.city}`);
   if (input.brand.context) out.push(`- ${t.business}: ${input.brand.context}`);
   out.push(`- ${t.data(input.asOf, input.panelUrl)}`);
+
+  if (input.builder) out.push("", lang === "en" ? "## Connect to the site first" : "## Antes de empezar: conéctate al sitio", ...connectInstructions(input.builder, target));
 
   if (input.summary?.trim()) out.push("", t.summary, input.summary.trim());
 

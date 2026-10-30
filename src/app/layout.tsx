@@ -67,7 +67,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
           <WorkspaceProvider value={workspace ? toPublic(workspace) : null}>
           {shown && workspace && !inSetup ? (
             <div className="glass-shell rounded-[20px] min-h-[calc(100dvh-1rem)] md:min-h-[calc(100dvh-1.5rem)] shadow-[0_1px_0_rgb(255_255_255/0.6)_inset]">
-              <AppShell viewer={{ name: shown.name, email: shown.email }} logout={local ? undefined : logout} nav={local ? { hidden: hiddenNavHrefs(), showSettings: true } : undefined}>{children}</AppShell>
+              <AppShell viewer={{ name: shown.name, email: shown.email }} logout={local ? undefined : logout} nav={local ? { hidden: hiddenNavHrefs(), showSettings: true } : { showSettings: true }}>{children}</AppShell>
             </div>
           ) : (
             children

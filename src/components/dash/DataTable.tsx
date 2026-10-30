@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 
 import { useMemo, useState } from "react";
 import { ArrowDown, ArrowUp } from "lucide-react";
@@ -44,6 +45,10 @@ function safeHttpUrl(url: string): string | null {
 function render(type: Column["type"], v: CellValue): React.ReactNode {
   if (v === null || v === undefined) return <span className="text-muted-foreground">-</span>;
   if (type === "link" && typeof v === "object" && !Array.isArray(v)) {
+    // Ruta interna del panel (/crm/12): navega dentro del panel (en el CRM abre el pop-up).
+    if (v.href && /^\/(?!\/)/.test(v.href)) {
+      return <Link href={v.href} scroll={false} className="font-medium underline decoration-muted-foreground/40 underline-offset-4 hover:decoration-foreground">{v.text}</Link>;
+    }
     const href = v.href ? safeHttpUrl(v.href) : null;
     if (!href) return v.text;
     return <a href={href} target="_blank" rel="noopener noreferrer" className="underline decoration-muted-foreground/50 underline-offset-4 hover:decoration-foreground">{v.text}</a>;

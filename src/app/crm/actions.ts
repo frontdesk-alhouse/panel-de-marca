@@ -5,7 +5,8 @@ import { revalidatePath } from "next/cache";
 import { getViewer } from "@/auth";
 import { loadWorkspace } from "@/lib/workspace/load";
 import { activityInput, fieldErrors, formToObject, leadInput } from "@/lib/crm/validation";
-import { addActivity, createLead, updateLead } from "@/lib/crm/store";
+import { addActivity, createLead, updateLead, updateLeadStage } from "@/lib/crm/store";
+import { LEAD_STAGES } from "@/db/schema";
 
 export interface FormState { errors?: Record<string, string>; ok?: boolean }
 
@@ -89,4 +90,20 @@ export async function discardMeeting(fd: FormData): Promise<void> {
   const { discardProposal } = await import("@/lib/crm/meetings");
   await discardProposal(id, viewer.name);
   revalidatePath("/crm");
+}
+
+/** Botones rápidos de etapa en el pop-up del prospecto. */
+export async function setLeadStage(fd: FormData): Promise<void> {
+  await requireViewer();
+  const id = parseId(fd.get("id"));
+  const stage = fd.get("stage");
+  if (!id || typeof stage !== "string" || !(LEAD_STAGES as readonly string[]).includes(stage)) return;
+  try {
+    await updateLeadStage(id, stage as (typeof LEAD_STAGES)[number]);
+  } catch (e) {
+    console.error("[crm] no se pudo cambiar la etapa", e);
+    return;
+  }
+  revalidatePath("/crm");
+  revalidatePath(`/crm/${id}`);
 }

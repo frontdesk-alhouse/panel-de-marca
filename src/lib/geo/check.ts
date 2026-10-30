@@ -91,6 +91,17 @@ async function get(url: string, ua: string): Promise<Fetched> {
   }
 }
 
+/**
+ * En qué está hecho el sitio, leyendo su portada una vez (mismas protecciones que el chequeo:
+ * solo hosts públicos, cuerpo acotado). null si no se reconoce o no responde.
+ */
+export async function detectSitePlatform(domain: string): Promise<ReturnType<typeof detectPlatform>> {
+  const clean = domain.trim().replace(/^https?:\/\//, "").replace(/\/.*$/, "");
+  if (!clean) return null;
+  const home = await get(`https://${clean}/`, "Mozilla/5.0 (compatible; AltoDashboard/1.0; +https://github.com/frontdesk-alhouse/panel-de-marca)");
+  return home.body ? detectPlatform(home.body) : null;
+}
+
 const ENTITY_TYPES = /Organization|LocalBusiness|Store|Restaurant|Bakery|Clinic|Physician|Dentist|Attorney|Agency|Service|Corporation|Brand|Person|Place/;
 
 const STOP = new Set(["para", "with", "from", "de", "del", "la", "las", "los", "el", "en", "y", "e", "o", "and", "the", "por", "con", "una", "uno"]);
