@@ -15,7 +15,16 @@ const MAX_TURNS = 40;
 const Body = z.object({
   model: z.enum(["sonnet", "opus"]).default("sonnet"),
   messages: z.array(z.object({ role: z.enum(["user", "assistant"]), content: z.string().min(1).max(12_000) })).min(1).max(MAX_TURNS),
+  /** Página que la persona tiene abierta (columna del copiloto). Solo rutas internas. */
+  page: z.object({ path: z.string().regex(/^\/[a-z0-9/_-]*$/i).max(120), title: z.string().max(80) }).optional(),
 });
+
+/** Mensaje de sistema con la página abierta: así «esto» o «esta gráfica» tiene referente. */
+function pageNote(page?: { path: string; title: string }): string {
+  if (!page) return "";
+  const title = page.title.replace(/[\n\r]/g, " ").slice(0, 80);
+  return ` La persona tiene abierta la página «${title}» (${page.path}) del panel: si dice «esto», «esta página» o «esta gráfica», se refiere a ella; lee esa sección antes de responder.`;
+}
 
 /** Etiqueta legible de lo que el asistente está consultando (se muestra mientras piensa). */
 const TOOL_LABEL: Record<string, string> = { leer_seccion: "Leyendo el panel", ultimo_analisis_semanal: "Revisando el análisis semanal", plan_de_medios: "Revisando el plan de medios", ...COPILOT_LABELS };
@@ -51,7 +60,7 @@ export async function POST(req: Request) {
           max_iterations: 10,
           messages: [
             ...parsed.data.messages,
-            { role: "system", content: `Hoy es ${todayIso()} (zona horaria ${localeSettings().timeZone}).` },
+            { role: "system", content: `Hoy es ${todayIso()} (zona horaria ${localeSettings().timeZone}).${pageNote(parsed.data.page)}` },
           ],
           stream: true,
         });

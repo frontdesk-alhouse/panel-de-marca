@@ -19,6 +19,8 @@ import { AppearanceMenu } from "./AppearanceMenu";
 import { CommunityCard } from "./CommunityCard";
 import { UpdateNotice } from "./UpdateNotice";
 import { useLogo } from "./appearance";
+import { CopilotPanel, CopilotToggle, useCopilotAvailable } from "@/components/assistant/CopilotPanel";
+import { askCopilot, useCopilotOpen } from "@/components/assistant/copilot-panel";
 
 interface Viewer { name: string; email: string }
 
@@ -89,9 +91,12 @@ function Crumbs() {
 function AskBox() {
   const t = useT();
   const router = useRouter();
+  const inPanel = useCopilotAvailable();
   const [q, setQ] = useState("");
+  // Fuera de Inicio la pregunta va a la columna del copiloto, sin salir de la página.
+  const submit = (text: string) => (inPanel ? askCopilot(text) : router.push(`/?q=${encodeURIComponent(text)}`));
   return (
-    <form role="search" className="relative hidden md:block" onSubmit={(e) => { e.preventDefault(); if (q.trim()) { router.push(`/?q=${encodeURIComponent(q.trim())}`); setQ(""); } }}>
+    <form role="search" className="relative hidden md:block" onSubmit={(e) => { e.preventDefault(); if (q.trim()) { submit(q.trim()); setQ(""); } }}>
       <label htmlFor="ask" className="sr-only">{t.shell.ask}</label>
       <Sparkles className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
       <input id="ask" value={q} onChange={(e) => setQ(e.target.value)} placeholder={t.shell.ask} maxLength={500}
@@ -108,6 +113,9 @@ export function AppShell({ viewer, logout, nav, children }: { viewer: Viewer; lo
   const t = useT();
   const [open, setOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+  const isCopilotOpen = useCopilotOpen();
+  const isCopilotAvailable = useCopilotAvailable();
+  const copilotOpen = isCopilotOpen && isCopilotAvailable;
   useEffect(() => {
     // Preferencia guardada en este navegador; se lee después de hidratar.
     try {
@@ -138,7 +146,7 @@ export function AppShell({ viewer, logout, nav, children }: { viewer: Viewer; lo
         </SheetContent>
       </Sheet>
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-20 flex h-14 items-center gap-3 rounded-tr-[20px] border-b border-border/60 glass-bar px-4 md:px-8">
+        <header className={`sticky top-0 z-20 flex h-14 items-center gap-3 ${copilotOpen ? "" : "rounded-tr-[20px]"} border-b border-border/60 glass-bar px-4 md:px-8`}>
           <button type="button" onClick={() => setOpen(true)} aria-label={t.shell.openNav} className="grid h-9 w-9 place-items-center rounded-md hover:bg-card lg:hidden">
             <Menu className="h-5 w-5" aria-hidden />
           </button>
@@ -147,11 +155,12 @@ export function AppShell({ viewer, logout, nav, children }: { viewer: Viewer; lo
             {collapsed ? <PanelLeftOpen className="h-5 w-5" aria-hidden /> : <PanelLeftClose className="h-5 w-5" aria-hidden />}
           </button>
           <Suspense fallback={null}><Crumbs /></Suspense>
-          <div className="ml-auto flex items-center gap-2"><UpdateNotice /><AskBox /><SyncNow /><ShareButton url={PUBLIC_REPO_URL} title={t.shell.defaultTitle} text={t.share.text} label={t.share.button} copiedLabel={t.share.copied} failedLabel={t.skills.copyFailed} isCompact /><AppLauncher /></div>
+          <div className="ml-auto flex items-center gap-2"><UpdateNotice />{!copilotOpen && <AskBox />}<SyncNow /><CopilotToggle /><ShareButton url={PUBLIC_REPO_URL} title={t.shell.defaultTitle} text={t.share.text} label={t.share.button} copiedLabel={t.share.copied} failedLabel={t.skills.copyFailed} isCompact /><AppLauncher /></div>
         </header>
         <Onboarding />
         <main className={`mx-auto w-full min-w-0 px-4 py-8 md:px-8 md:py-10 ${collapsed ? "max-w-[1600px]" : "max-w-[1320px]"}`}>{children}</main>
       </div>
+      <CopilotPanel />
     </div>
   );
 }

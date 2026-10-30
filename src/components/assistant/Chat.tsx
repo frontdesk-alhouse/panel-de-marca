@@ -14,10 +14,23 @@ const MODEL_KEY = "ah-panel-chat-model";
 const MODELS = [{ key: "sonnet", label: "Sonnet 5.5", hint: "Rápido" }, { key: "opus", label: "Opus 5.5", hint: "Más profundo" }] as const;
 type ModelKey = (typeof MODELS)[number]["key"];
 
+/** Página que se está viendo: el asistente la usa para entender «esto» o «esta gráfica». */
+export interface ChatPage { path: string; title: string }
+
+type Props = {
+  suggestions: string[];
+  initialQuestion?: string | null;
+  /** En la columna lateral: encabezado y estado vacío más compactos, y no toca la URL. */
+  compact?: boolean;
+  page?: ChatPage;
+  /** Avisa que ya se hizo la pregunta inicial (la columna la consume una vez). */
+  onInitialAsked?: () => void;
+};
+
 /** Chat con el analista del panel. La conversación se guarda solo en este navegador. */
-export function Chat({ suggestions, initialQuestion }: { suggestions: string[]; initialQuestion?: string }) {
+export function Chat({ suggestions, initialQuestion, compact = false, page, onInitialAsked }: Props) {
   const router = useRouter();
-  const askedInitial = useRef(false);
+  const askedInitial = useRef<string | null>(null);
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [status, setStatus] = useState<string | null>(null);
@@ -40,11 +53,12 @@ export function Chat({ suggestions, initialQuestion }: { suggestions: string[]; 
     end.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }, [messages]);
 
-  // Pregunta que llega del buscador del encabezado (?q=): se hace una vez y se limpia la URL.
+  // Pregunta que llega de fuera (?q= en Inicio, o el buscador hacia la columna): se hace una vez.
   useEffect(() => {
-    if (!initialQuestion || askedInitial.current) return;
-    askedInitial.current = true;
-    router.replace("/");
+    if (!initialQuestion || askedInitial.current === initialQuestion) return;
+    askedInitial.current = initialQuestion;
+    if (!compact) router.replace("/");
+    onInitialAsked?.();
     void ask(initialQuestion);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- solo al llegar con una pregunta nueva
   }, [initialQuestion]);
@@ -60,7 +74,7 @@ export function Chat({ suggestions, initialQuestion }: { suggestions: string[]; 
     const append = (text: string) => setMessages((m) => [...m.slice(0, -1), { role: "assistant", content: m.at(-1)!.content + text }]);
     const addProposal = (p: Proposal) => setMessages((m) => [...m.slice(0, -1), { ...m.at(-1)!, proposals: [...(m.at(-1)!.proposals ?? []), p] }]);
     try {
-      const res = await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model, messages: history.slice(-40).map(({ role, content }) => ({ role, content })) }) });
+      const res = await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model, page, messages: history.slice(-40).map(({ role, content }) => ({ role, content })) }) });
       if (!res.ok || !res.body) {
         const err = (await res.json().catch(() => ({}))) as { error?: string };
         append(err.error === "Falta ANTHROPIC_API_KEY" ? "El chat aún no está conectado: falta la API key de Anthropic." : "No se pudo conectar con el asistente.");
@@ -111,7 +125,7 @@ export function Chat({ suggestions, initialQuestion }: { suggestions: string[]; 
   const empty = messages.length === 0;
   return (
     <div className="flex h-full min-h-0 flex-col rounded-2xl bg-card">
-      <div className="flex items-center justify-between px-5 pt-4">
+      <div className={cn("flex items-center justify-between", compact ? "px-4 pt-3" : "px-5 pt-4")}>
         <div role="radiogroup" aria-label="Modelo" className="inline-flex rounded-lg bg-background p-0.5">
           {MODELS.map((m) => (
             <button key={m.key} type="button" role="radio" aria-checked={model === m.key} disabled={busy} title={m.hint}
@@ -127,11 +141,11 @@ export function Chat({ suggestions, initialQuestion }: { suggestions: string[]; 
           </button>
         )}
       </div>
-      <div className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain px-5 py-5" aria-live="polite">
+      <div className={cn("min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain", compact ? "px-4 py-4" : "px-5 py-5")} aria-live="polite">
         {empty && (
           <div className="space-y-4">
-            <p className="font-display text-2xl leading-tight md:text-3xl">¿Qué quieres saber de tu marketing?</p>
-            <p className="max-w-[60ch] text-sm text-muted-foreground">Pregunta sobre tu sitio, Google Ads, Instagram, la competencia o el CRM. Leo los datos del panel en vivo antes de responder.</p>
+            <p className={cn("font-display leading-tight", compact ? "text-xl" : "text-2xl md:text-3xl")}>{compact && page ? `¿Qué quieres saber de ${page.title}?` : "¿Qué quieres saber de tu marketing?"}</p>
+            <p className="max-w-[60ch] text-sm text-muted-foreground">{compact ? "Pregunta sobre lo que ves en esta página o sobre cualquier dato del panel. También puedo proponer cambios, como agregar competencia." : "Pregunta sobre tu sitio, Google Ads, Instagram, la competencia o el CRM. Leo los datos del panel en vivo antes de responder."}</p>
             <div className="flex flex-wrap gap-2">
               {suggestions.map((s) => (
                 <button key={s} type="button" onClick={() => ask(s)} className="rounded-full bg-background px-3.5 py-2 text-left text-sm transition hover:bg-secondary active:translate-y-px">{s}</button>

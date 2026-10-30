@@ -121,7 +121,7 @@ export function SyncNow() {
       <button type="button" onClick={() => setOpen(true)} aria-label={c.button} title={c.button}
         className="inline-flex h-9 items-center gap-2 rounded-md px-2.5 text-sm text-muted-foreground transition-[background-color,transform] duration-150 hover:bg-card hover:text-foreground active:scale-[0.97] motion-reduce:transform-none">
         <RefreshCw className={`h-4 w-4 ${busy ? "animate-spin motion-reduce:animate-none" : ""}`} aria-hidden />
-        <span className="hidden xl:inline">{c.button}</span>
+        <span className="hidden whitespace-nowrap xl:inline">{c.button}</span>
       </button>
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent side="right" className="w-[min(100vw,420px)] gap-5 overflow-y-auto p-6">
