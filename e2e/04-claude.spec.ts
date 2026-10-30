@@ -135,3 +135,31 @@ test.describe("panel y Claude", () => {
     expect(to.searchParams.get("code_challenge_method")).toBe("S256");
   });
 });
+
+test.describe("copiloto", () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => localStorage.setItem("ah-panel-onboarding-v1", "1"));
+  });
+
+  test("la propuesta del copiloto sigue visible aunque el texto continúe después", async ({ page }) => {
+    // Respuesta simulada: texto, propuesta a la mitad y más texto (así responde Claude).
+    await page.route("**/api/chat", (route) => route.fulfill({
+      status: 200,
+      contentType: "application/x-ndjson",
+      body: [
+        { type: "text", text: "Te propongo agregarla." },
+        { type: "proposal", id: 99, summary: "Agregar a la competencia: Estudio Ejemplo (ejemplo.com)" },
+        { type: "text", text: " Dale «Aplicar» para confirmarlo." },
+        { type: "done" },
+      ].map((e) => JSON.stringify(e)).join("\n") + "\n",
+    }));
+    await page.goto("/resumen");
+    await page.getByRole("button", { name: "Abrir copiloto" }).click();
+    const panel = page.getByRole("complementary", { name: "Copiloto" }).or(page.getByRole("dialog"));
+    await panel.getByLabel("Pregunta").fill("Agrega a Estudio Ejemplo a la competencia");
+    await panel.getByRole("button", { name: "Enviar" }).click();
+    await expect(panel.getByText("Dale «Aplicar» para confirmarlo.", { exact: false })).toBeVisible();
+    await expect(panel.getByText("Agregar a la competencia: Estudio Ejemplo")).toBeVisible();
+    await expect(panel.getByRole("button", { name: "Aplicar" })).toBeVisible();
+  });
+});

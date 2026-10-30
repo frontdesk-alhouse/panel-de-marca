@@ -71,7 +71,8 @@ export function Chat({ suggestions, initialQuestion, compact = false, page, onIn
     setInput("");
     setBusy(true);
     setStatus("Pensando");
-    const append = (text: string) => setMessages((m) => [...m.slice(0, -1), { role: "assistant", content: m.at(-1)!.content + text }]);
+    // Conserva las propuestas del copiloto: llegan a mitad de la respuesta y el texto sigue después.
+    const append = (text: string) => setMessages((m) => [...m.slice(0, -1), { ...m.at(-1)!, content: m.at(-1)!.content + text }]);
     const addProposal = (p: Proposal) => setMessages((m) => [...m.slice(0, -1), { ...m.at(-1)!, proposals: [...(m.at(-1)!.proposals ?? []), p] }]);
     try {
       const res = await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model, page, messages: history.slice(-40).map(({ role, content }) => ({ role, content })) }) });
