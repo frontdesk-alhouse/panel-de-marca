@@ -1,5 +1,9 @@
-import { ChevronDown, ExternalLink, Plug } from "lucide-react";
-import { BUILDERS, VERIFIED, builderFor, type Builder } from "@/lib/builders/catalog";
+"use client";
+
+import { useState } from "react";
+import { Check, ExternalLink, Plug } from "lucide-react";
+import { BUILDERS, VERIFIED, builderFor, type Builder, type BuilderId } from "@/lib/builders/catalog";
+import { BUILDER_ICONS } from "@/lib/builders/icons";
 import { CopyButton } from "@/components/handoff/CopyButton";
 import { cn } from "@/lib/utils";
 
@@ -8,6 +12,13 @@ const STATUS: Record<Builder["status"], { label: string; tone: string }> = {
   parcial: { label: "Oficial · no edita páginas", tone: "bg-warn/15 text-warn" },
   beta: { label: "Oficial · beta", tone: "bg-warn/15 text-warn" },
 };
+
+/** Logo de la plataforma en un solo color (sigue al tema); monograma si no hay logo. */
+function Logo({ id, name }: { id: string; name: string }) {
+  const icon = BUILDER_ICONS[id];
+  if (!icon) return <span className="grid h-7 w-7 place-items-center rounded-md bg-foreground font-display text-sm text-background" aria-hidden>{name[0]}</span>;
+  return <svg viewBox="0 0 24 24" className="h-7 w-7" fill="currentColor" aria-hidden><path d={icon.path} /></svg>;
+}
 
 /** Un comando con su botón de copiar (los comentarios entre paréntesis no se copian). */
 function Command({ text }: { text: string }) {
@@ -24,6 +35,10 @@ function Command({ text }: { text: string }) {
 function BuilderBody({ b }: { b: Builder }) {
   return (
     <div className="space-y-4 text-sm">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="font-medium">{b.name}</span>
+        <span className={cn("rounded-full px-2 py-0.5 text-[11px]", STATUS[b.status].tone)}>{STATUS[b.status].label}</span>
+      </div>
       <p><span className="text-muted-foreground">Qué puede hacer tu IA: </span>{b.can}</p>
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="space-y-2">
@@ -31,7 +46,7 @@ function BuilderBody({ b }: { b: Builder }) {
           {b.claudeCode.map((c) => <Command key={c} text={c} />)}
         </div>
         <div className="space-y-2">
-          <p className="font-mono text-[11px] uppercase text-muted-foreground">En la app de Claude</p>
+          <p className="font-mono text-[11px] uppercase text-muted-foreground">O en la app de Claude</p>
           <p>{b.claudeApp}</p>
           {b.mcpUrl && <Command text={b.mcpUrl} />}
           {b.otherAis && <p className="text-muted-foreground">{b.otherAis}</p>}
@@ -39,7 +54,7 @@ function BuilderBody({ b }: { b: Builder }) {
       </div>
       {b.skills && (
         <div className="space-y-2">
-          <p className="font-mono text-[11px] uppercase text-muted-foreground">Skills oficiales</p>
+          <p className="font-mono text-[11px] uppercase text-muted-foreground">Skills oficiales (opcional)</p>
           <p><a href={b.skills.url} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">{b.skills.name}</a> enseñan a la IA a usar {b.name} bien (auditorías, publicar con cuidado…).</p>
           {b.skills.install?.map((c) => <Command key={c} text={c} />)}
         </div>
@@ -53,39 +68,44 @@ function BuilderBody({ b }: { b: Builder }) {
 }
 
 /**
- * «Conecta tu IA a tu sitio»: el servidor MCP oficial de cada constructor y cómo agregarlo a
- * Claude Code, la app de Claude u otras IA. La plataforma detectada va primero y abierta.
- * Con `only`, muestra solo la detectada (Ajustes).
+ * «Conecta tu IA a tu sitio»: eliges en qué está montado tu sitio (íconos) y abajo salen los
+ * pasos para conectar su servidor MCP oficial. La plataforma detectada viene elegida y marcada,
+ * pero todas están a un clic.
  */
-export function BuilderConnect({ platform, only = false }: { platform?: string | null; only?: boolean }) {
+export function BuilderConnect({ platform }: { platform?: string | null }) {
   const detected = builderFor(platform);
-  const list = only ? (detected ? [detected] : []) : [...(detected ? [detected] : []), ...BUILDERS.filter((b) => b.id !== detected?.id)];
+  const [selected, setSelected] = useState<BuilderId>(detected?.id ?? BUILDERS[0].id);
+  const current = BUILDERS.find((b) => b.id === selected) ?? BUILDERS[0];
   return (
-    <section aria-labelledby="builders-h" className="space-y-4">
+    <section aria-labelledby="builders-h" className="space-y-5 rounded-2xl bg-card p-5 md:p-6">
       <div className="space-y-1.5">
         <h2 id="builders-h" className="flex items-center gap-2 font-display text-2xl md:text-3xl"><Plug className="h-5 w-5" aria-hidden />Conecta tu IA a tu sitio</h2>
         <p className="max-w-[70ch] text-sm text-muted-foreground">
           Lo que copias del panel le dice a tu IA qué cambiar. Para que lo haga directo en tu sitio, y no solo te lo explique, conéctala al servidor oficial (MCP) de tu constructor.
-          {detected ? ` Tu sitio está hecho en ${detected.name}.` : " Todavía no sabemos en qué está hecho tu sitio: lo detecta el chequeo diario de Visibilidad en IA."}
         </p>
       </div>
-      {only && !detected && <p className="rounded-xl bg-card p-4 text-sm text-muted-foreground">Cuando el chequeo detecte tu plataforma, aquí verás cómo conectarla. Mientras, tienes todas en Skills.</p>}
-      <ul className="space-y-2">
-        {list.map((b) => (
-          <li key={b.id}>
-            <details className="group/b rounded-2xl bg-card" open={b.id === detected?.id}>
-              <summary className="flex cursor-pointer list-none flex-wrap items-center gap-3 p-4 [&::-webkit-details-marker]:hidden">
+      <div className="space-y-3">
+        <p className="text-sm font-medium" id="builders-q">¿Sobre qué está montado tu sitio web?</p>
+        <div role="radiogroup" aria-labelledby="builders-q" className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-7">
+          {BUILDERS.map((b) => {
+            const on = b.id === selected;
+            return (
+              <button key={b.id} type="button" role="radio" aria-checked={on} onClick={() => setSelected(b.id)}
+                className={cn("relative flex flex-col items-center gap-2 rounded-xl bg-background px-2 py-3 text-xs transition-[box-shadow,transform] duration-150 active:scale-[0.97] motion-reduce:transform-none",
+                  on ? "shadow-[inset_0_0_0_2px_var(--foreground)]" : "text-muted-foreground hover:text-foreground hover:shadow-[inset_0_0_0_1px_var(--border)]")}>
+                {on && <Check className="absolute right-1.5 top-1.5 h-3.5 w-3.5" aria-hidden />}
+                <Logo id={b.id} name={b.name} />
                 <span className="font-medium">{b.name}</span>
-                <span className={cn("rounded-full px-2 py-0.5 text-[11px]", STATUS[b.status].tone)}>{STATUS[b.status].label}</span>
-                {b.id === detected?.id && <span className="rounded-full bg-primary px-2 py-0.5 text-[11px] text-primary-foreground">Tu sitio</span>}
-                <ChevronDown className="ml-auto h-4 w-4 text-muted-foreground transition-transform group-open/b:rotate-180 motion-reduce:transition-none" aria-hidden />
-              </summary>
-              <div className="border-t border-border p-4"><BuilderBody b={b} /></div>
-            </details>
-          </li>
-        ))}
-      </ul>
-      <p className="text-[11px] text-muted-foreground">Revisado contra la documentación oficial de cada plataforma el {VERIFIED}. Si algo ya no coincide, la guía oficial de cada una manda.</p>
+                {b.id === detected?.id && <span className="rounded-full bg-primary px-1.5 py-0.5 text-[10px] leading-none text-primary-foreground">Tu sitio</span>}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+      <div key={current.id} className="border-t border-border pt-5 animate-in fade-in-0 duration-200 motion-reduce:animate-none">
+        <BuilderBody b={current} />
+      </div>
+      <p className="text-[11px] text-muted-foreground">Revisado contra la documentación oficial de cada plataforma el {VERIFIED}. Si algo ya no coincide, la guía oficial de cada una manda. Logos: simple-icons (CC0).</p>
     </section>
   );
 }
