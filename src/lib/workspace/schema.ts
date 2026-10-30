@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { BUILDER_IDS } from "../builders/catalog";
 
 /**
  * Configuración de la marca que usa el panel: quién es, dónde está, qué vende,
@@ -101,6 +102,8 @@ export const WorkspaceSchema = z.object({
     team: text.min(1),
     /** Quién fija prioridades en la estrategia («Ana»). */
     owner: text.min(1),
+    /** En qué está montado el sitio (lo elige la persona): manda sobre lo que detecta el chequeo. */
+    builder: z.enum(BUILDER_IDS).optional(),
   }),
   locale: z.object({
     language: z.enum(LANGUAGES),

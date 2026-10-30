@@ -7,7 +7,8 @@
  */
 export const VERIFIED = "2026-10-29";
 
-export type BuilderId = "webflow" | "framer" | "shopify" | "wordpress" | "wix" | "squarespace" | "duda";
+export const BUILDER_IDS = ["webflow", "framer", "shopify", "wordpress", "wix", "squarespace", "duda"] as const;
+export type BuilderId = (typeof BUILDER_IDS)[number];
 
 export interface Builder {
   id: BuilderId;

@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { Check, ExternalLink, Plug } from "lucide-react";
 import { BUILDERS, VERIFIED, builderFor, type Builder, type BuilderId } from "@/lib/builders/catalog";
 import { BUILDER_ICONS } from "@/lib/builders/icons";
 import { CopyButton } from "@/components/handoff/CopyButton";
 import { cn } from "@/lib/utils";
+import { setSiteBuilder } from "@/lib/builders/actions";
 
 const STATUS: Record<Builder["status"], { label: string; tone: string }> = {
   oficial: { label: "Oficial", tone: "bg-good/15 text-good-ink" },
@@ -72,10 +73,26 @@ function BuilderBody({ b }: { b: Builder }) {
  * pasos para conectar su servidor MCP oficial. La plataforma detectada viene elegida y marcada,
  * pero todas están a un clic.
  */
-export function BuilderConnect({ platform }: { platform?: string | null }) {
-  const detected = builderFor(platform);
-  const [selected, setSelected] = useState<BuilderId>(detected?.id ?? BUILDERS[0].id);
+export function BuilderConnect({ chosen, detected: detectedId }: { chosen?: string | null; detected?: string | null }) {
+  const detected = builderFor(detectedId);
+  const [mine, setMine] = useState<BuilderId | null>(builderFor(chosen)?.id ?? null);
+  const [selected, setSelected] = useState<BuilderId>(mine ?? detected?.id ?? BUILDERS[0].id);
+  const [pending, start] = useTransition();
+  const [saved, setSaved] = useState<"ok" | "error" | null>(null);
   const current = BUILDERS.find((b) => b.id === selected) ?? BUILDERS[0];
+  // «Tu sitio»: lo que elegiste; si no has elegido, lo que detectamos.
+  const yours = mine ?? detected?.id ?? null;
+
+  function choose(id: BuilderId) {
+    setSelected(id);
+    setSaved(null);
+    start(async () => {
+      const res = await setSiteBuilder(id);
+      if (res.ok) setMine(id);
+      setSaved(res.ok ? "ok" : "error");
+    });
+  }
+
   return (
     <section aria-labelledby="builders-h" className="space-y-5 rounded-2xl bg-card p-5 md:p-6">
       <div className="space-y-1.5">
@@ -90,17 +107,25 @@ export function BuilderConnect({ platform }: { platform?: string | null }) {
           {BUILDERS.map((b) => {
             const on = b.id === selected;
             return (
-              <button key={b.id} type="button" role="radio" aria-checked={on} onClick={() => setSelected(b.id)}
+              <button key={b.id} type="button" role="radio" aria-checked={on} onClick={() => choose(b.id)}
                 className={cn("relative flex flex-col items-center gap-2 rounded-xl bg-background px-2 py-3 text-xs transition-[box-shadow,transform] duration-150 active:scale-[0.97] motion-reduce:transform-none",
                   on ? "shadow-[inset_0_0_0_2px_var(--foreground)]" : "text-muted-foreground hover:text-foreground hover:shadow-[inset_0_0_0_1px_var(--border)]")}>
                 {on && <Check className="absolute right-1.5 top-1.5 h-3.5 w-3.5" aria-hidden />}
                 <Logo id={b.id} name={b.name} />
                 <span className="font-medium">{b.name}</span>
-                {b.id === detected?.id && <span className="rounded-full bg-primary px-1.5 py-0.5 text-[10px] leading-none text-primary-foreground">Tu sitio</span>}
+                {b.id === yours && <span className="rounded-full bg-primary px-1.5 py-0.5 text-[10px] leading-none text-primary-foreground">Tu sitio</span>}
               </button>
             );
           })}
         </div>
+        <p role="status" className="min-h-4 text-xs text-muted-foreground">
+          {pending ? "Guardando…"
+            : saved === "ok" ? `Listo: tu sitio está en ${current.name}. Lo que copies del panel para tu IA ya trae los pasos de ${current.name}.`
+            : saved === "error" ? "No se pudo guardar; los pasos de abajo sí sirven."
+            : mine ? `Elegiste ${builderFor(mine)?.name}: lo que copies del panel para tu IA trae sus pasos.`
+            : detected ? `Lo detectamos como ${detected.name}. Si no es correcto, toca el tuyo y lo guardamos.`
+            : "Toca el tuyo y lo guardamos: así lo que copies para tu IA trae los pasos correctos."}
+        </p>
       </div>
       <div key={current.id} className="border-t border-border pt-5 animate-in fade-in-0 duration-200 motion-reduce:animate-none">
         <BuilderBody b={current} />

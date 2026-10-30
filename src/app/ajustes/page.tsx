@@ -9,7 +9,7 @@ import { integrationStates } from "@/lib/integrations/status";
 import { SettingsView } from "@/components/setup/SettingsView";
 import { SourcesStatus } from "@/components/setup/SourcesStatus";
 import { BuilderConnect } from "@/components/builders/BuilderConnect";
-import { sitePlatform } from "@/lib/builders/platform";
+import { builderChoice } from "@/lib/builders/platform";
 
 export async function generateMetadata() {
   const t = await getMessages();
@@ -28,7 +28,7 @@ export default async function AjustesPage({ searchParams }: { searchParams: Prom
       <div className="space-y-8">
         <h1 className="font-display text-4xl">{t.setup.settings.title}</h1>
         <SourcesStatus />
-        <BuilderConnect platform={await sitePlatform().catch(() => null)} />
+        <BuilderConnect {...await builderChoice().catch(() => ({ chosen: null, detected: null }))} />
       </div>
     );
   }
@@ -36,7 +36,7 @@ export default async function AjustesPage({ searchParams }: { searchParams: Prom
   const { google, tab } = await searchParams;
   return (
     <SettingsView
-      status={<><SourcesStatus /><BuilderConnect platform={await sitePlatform().catch(() => null)} /></>}
+      status={<><SourcesStatus /><BuilderConnect {...await builderChoice().catch(() => ({ chosen: null, detected: null }))} /></>}
       form={workspaceToForm(ws())}
       competitors={competitors().filter((c) => !c.self).map((c) => ({ name: c.name, domain: c.domain, city: c.city, mapsQuery: c.mapsQuery, ...(c.instagram ? { instagram: c.instagram } : {}) }))}
       states={integrationStates()}

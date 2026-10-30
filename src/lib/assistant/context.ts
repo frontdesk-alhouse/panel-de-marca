@@ -1,3 +1,4 @@
+import { builderFor } from "@/lib/builders/catalog";
 import { buildPlatformGroups, platformsForPrompt } from "@/lib/platforms/links";
 import type { Competitor, Workspace } from "@/lib/workspace/schema";
 import { competitors, ws } from "@/lib/workspace/store";
@@ -35,6 +36,12 @@ function briefingSection(w: Workspace): string {
  * fechas ni datos que cambien: así el prefijo se cachea entre preguntas (los datos
  * vivos llegan por herramientas).
  */
+/** Constructor del sitio (si la marca lo eligió): los pasos de las recomendaciones hablan de esa plataforma. */
+function builderLine(w: Workspace): string {
+  const b = builderFor(w.brand.builder);
+  return b ? `\n- El sitio está hecho en ${b.name}: cuando recomiendes cambios al sitio, di dónde se hacen en ${b.name} (paneles y nombres de esa plataforma), y que la IA de la persona puede hacerlos conectada a su MCP oficial.` : "";
+}
+
 export function buildSystem(w: Workspace, list: Competitor[]): string {
   const name = w.brand.name;
   return `Eres el analista del panel de ${name}. Respondes en español, de tú, directo y claro, como un socio que sabe de marketing y datos. ${w.brand.team} usan este chat para decidir qué hacer.
@@ -55,7 +62,7 @@ Solo hablas de la estrategia de marketing y adquisición de clientes de ${name} 
 
 ## Referencias fijas
 - Costo por lead objetivo: $${w.targets.cpl ?? 1000} ${w.locale.currency} (arriba del doble = ajustar). Google Ads necesita ~50 conversiones o 2-3 ciclos de conversión (~14 días cada uno) para salir de aprendizaje; cambios grandes lo reinician.
-- Búsquedas objetivo en Google: ${w.targetQueries.join(", ")}.
+- Búsquedas objetivo en Google: ${w.targetQueries.join(", ")}.${builderLine(w)}
 - Competencia medida: ${list.filter((c) => !c.self).map((c) => `${c.name} (${c.city})`).join(", ")}.
 - Fuerza SEO = contenido 30, autoridad por enlaces 25, local (Google Maps) 15, técnico 15, velocidad 10, confianza 5. La visibilidad en Google es el resultado, no un factor.
 - Los datos del CRM que ves son agregados (sin nombres ni contactos).

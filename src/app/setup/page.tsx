@@ -9,7 +9,7 @@ import { integrationStates } from "@/lib/integrations/status";
 import { SetupWizard } from "@/components/setup/SetupWizard";
 import { isStep, type StepId } from "@/components/setup/steps";
 import { BuilderConnect } from "@/components/builders/BuilderConnect";
-import { sitePlatform } from "@/lib/builders/platform";
+import { builderChoice } from "@/lib/builders/platform";
 
 export async function generateMetadata() {
   const t = await getMessages();
@@ -27,7 +27,7 @@ export default async function SetupPage({ searchParams }: { searchParams: Promis
   const asked = isStep(paso) ? paso : null;
   const step: StepId = google ? "conexiones" : asked ?? (saved ? "mercado" : "bienvenida");
   return (
-    <SetupWizard builders={saved ? <BuilderConnect platform={await sitePlatform().catch(() => null)} /> : null} initial={{
+    <SetupWizard builders={saved ? <BuilderConnect {...await builderChoice().catch(() => ({ chosen: null, detected: null }))} /> : null} initial={{
       step,
       form: saved ? workspaceToForm(ws()) : null,
       competitors: saved ? competitors().filter((c) => !c.self).map((c) => ({ name: c.name, domain: c.domain, city: c.city, mapsQuery: c.mapsQuery, ...(c.instagram ? { instagram: c.instagram } : {}) })) : [],
