@@ -7,7 +7,7 @@ import { todayIso } from "@/lib/dates";
 import { getSkill, skillsForMetric, SKILL_IDS, type SkillId } from "@/lib/skills/catalog";
 import type { DimensionId, MetricResult, Scorecard } from "@/lib/scorecard/types";
 import type { Insight } from "@/lib/analytics/insights";
-import type { Weekly } from "@/lib/assistant/weekly";
+import type { Frente, StoredWeekly } from "@/lib/assistant/weekly";
 import type { Strategy } from "@/lib/assistant/strategy";
 import type { Evidence, HandoffInput, HandoffItem, HandoffLang, Impact } from "./build";
 
@@ -136,19 +136,56 @@ export function skillsForSection(section: string): SkillId[] {
 
 const CLAUDE_BASIS = "la propone el análisis de Claude con tus datos; revisa que tenga sentido para tu negocio";
 
-export async function handoffFromWeekly(weekly: Weekly, periodTo: string): Promise<HandoffPayload> {
-  const items: HandoffItem[] = weekly.acciones.map((a, i) => ({
-    id: `w${i}`, title: a.accion, impact: a.impacto, detail: `${a.porQue} (sección: ${a.seccion})`,
-    evidence: { confidence: "media", basis: CLAUDE_BASIS },
-  }));
+/** Frente de trabajo → skill que le enseña a la IA cómo hacerlo. */
+const FRENTE_SKILLS: Record<Frente, SkillId[]> = {
+  seo: ["seo-geo"], geo: ["seo-geo"], contenido: ["seo-geo"], competencia: ["seo-geo"],
+  anuncios: ["anuncios-eficiencia"],
+  conversion: ["conversion-medicion"], medicion: ["conversion-medicion"], sitio: ["conversion-medicion"], crm: ["conversion-medicion"],
+  redes: [], otro: [],
+};
+
+type WeeklyAction = StoredWeekly["acciones"][number];
+
+function actionSkills(a: WeeklyAction): SkillId[] {
+  return a.frente === "otro" ? skillsForSection(`${a.seccion} ${a.accion}`) : FRENTE_SKILLS[a.frente];
+}
+
+/** Una acción del análisis como tarea para la IA: qué vimos, qué hacer, pasos y cómo sabremos que funcionó. */
+function actionItem(a: WeeklyAction, id: string): HandoffItem {
+  const lines = [
+    a.hallazgo && `Lo que vimos: ${a.hallazgo}`,
+    a.porQue && `Por qué importa: ${a.porQue}`,
+    a.pasos.length ? `Pasos: ${a.pasos.map((p, i) => `(${i + 1}) ${p}`).join(" ")}` : "",
+    a.exito && `Sabremos que funcionó si: ${a.exito}`,
+  ].filter(Boolean);
+  return { id, title: a.accion, impact: a.impacto, detail: lines.join("\n") || `${a.porQue} (sección: ${a.seccion})`, evidence: { confidence: "media", basis: CLAUDE_BASIS } };
+}
+
+export async function handoffFromWeekly(weekly: StoredWeekly, periodTo: string): Promise<HandoffPayload> {
+  const items = weekly.acciones.map((a, i) => actionItem(a, `w${i}`));
   return finish({
     origin: "Análisis semanal",
     asOf: periodTo,
-    summary: [weekly.titular, ...weekly.queCambio.map((c) => `- ${c}`)].join("\n"),
+    summary: [weekly.foco && `En qué trabajamos esta semana: ${weekly.foco}`, weekly.titular, ...weekly.queCambio.map((c) => `- ${c}`)].filter(Boolean).join("\n"),
     items,
     notes: [...weekly.riesgos.map((r) => `Riesgo: ${r}`), ...weekly.esperar.map((e) => `Esperar: ${e}`)],
-    skills: weekly.acciones.flatMap((a) => skillsForSection(`${a.seccion} ${a.accion}`)),
+    skills: weekly.acciones.flatMap(actionSkills),
     defaultItems: items.filter((i) => i.impact === "alto").map((i) => i.id).slice(0, MAX_DEFAULT),
+  });
+}
+
+/** Una sola acción del análisis, lista para pasarla a la IA con su skill. */
+export async function handoffFromWeeklyAction(weekly: StoredWeekly, index: number, periodTo: string): Promise<HandoffPayload> {
+  const a = weekly.acciones[index];
+  const item = actionItem(a, `w${index}`);
+  return finish({
+    origin: `Análisis semanal · ${a.accion}`,
+    asOf: periodTo,
+    summary: weekly.foco ? `En qué trabajamos esta semana: ${weekly.foco}` : weekly.titular,
+    items: [item],
+    notes: weekly.esperar.map((e) => `No tocar todavía: ${e}`),
+    skills: actionSkills(a),
+    defaultItems: [item.id],
   });
 }
 
