@@ -56,6 +56,17 @@ function visibility(w: RawWindows, out: Inputs) {
   const prevBrand = sum(w.previous, "gsc", "impressions", isBrandQuery);
   out.brand_impressions_delta = input(delta(sum(w.current, "gsc", "impressions", isBrandQuery), prevBrand), prevBrand ?? 0);
 
+  // Tráfico al sitio que no se paga. Con GA4 midiendo, un canal sin filas es cero, no «sin datos».
+  const sessions = sum(w.current, "ga4", "sessions");
+  const channel = (rows: AggRow[], c: string) => sum(rows, "ga4", "sessions", `channel:${c}`) ?? (sum(rows, "ga4", "sessions") === null ? null : 0);
+  const organic = channel(w.current, "Organic Search");
+  out.organic_search_sessions = input(organic, organic ?? 0);
+  out.organic_search_share = input(ratio(organic, sessions), sessions ?? 0);
+  const prevOrganic = channel(w.previous, "Organic Search");
+  out.organic_search_delta = input(delta(organic, prevOrganic), prevOrganic ?? 0);
+  const direct = channel(w.current, "Direct");
+  out.direct_sessions = input(direct, direct ?? 0);
+
   const views = sum(w.current, "gbp", "views");
   const actions = ["calls", "website_clicks", "directions"]
     .map((m) => sum(w.current, "gbp", m))

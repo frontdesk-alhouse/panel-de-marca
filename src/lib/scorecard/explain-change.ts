@@ -51,10 +51,14 @@ const dir = (a: number | null, b: number | null): Driver["direction"] =>
  * Qué movió la nota entre un día y la referencia. En «General»: qué áreas subieron o bajaron (y cuáles
  * entraron o salieron de la calificación). En un área: qué métricas cambiaron de color o empezaron a medirse.
  */
-export function explainChange(points: readonly ExplainPoint[], date: string, series: string, meta: ExplainMeta): Explanation | null {
+export function explainChange(
+  points: readonly ExplainPoint[], date: string, series: string, meta: ExplainMeta,
+  /** Con periodos (semana, mes…) se compara con el periodo anterior; con días, con una semana antes. */
+  opts: { previousPoint?: boolean } = {},
+): Explanation | null {
   const cur = points.find((p) => p.date === date);
   if (!cur) return null;
-  const prev = referencePoint(points, date);
+  const prev = opts.previousPoint ? [...points].reverse().find((p) => p.date < date) ?? null : referencePoint(points, date);
   const value = series === "overall" ? cur.overall : cur.dimensions[series] ?? null;
   if (!prev) return { value, previousValue: null, previousDate: null, delta: null, drivers: [] };
   const previousValue = series === "overall" ? prev.overall : prev.dimensions[series] ?? null;

@@ -56,8 +56,10 @@ export interface MetricResult {
 
 export interface DimensionResult {
   definition: DimensionDefinition;
-  /** Nota de la dimensión; null si no hay base suficiente para calificarla (ver `partial`). */
-  score: number | null;
+  /** Nota del área. Sin base suficiente vale 0 (ver `rated`). */
+  score: number;
+  /** true si la nota sale de métricas medidas; false si es 0 por falta de datos. */
+  rated: boolean;
   /** Promedio de lo poco que sí se midió cuando no alcanza para calificar. Solo informativo. */
   partial: number | null;
   scored: number;
@@ -68,7 +70,7 @@ export interface Scorecard {
   overall: number | null;
   /** Proporción de métricas calificadas sobre el total */
   coverage: number;
-  /** Proporción del peso total (0 a 1) que pertenece a dimensiones realmente calificadas */
+  /** Proporción del peso total (0 a 1) cuyas áreas tienen base suficiente; el resto vale 0 */
   weightCoverage: number;
   dimensions: DimensionResult[];
   metrics: MetricResult[];

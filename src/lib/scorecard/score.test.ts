@@ -21,7 +21,7 @@ test("bandas en los bordes, ambas direcciones", () => {
 });
 
 // Los casos a mano de abajo prueban la aritmética, no la compuerta: reglas sin mínimo.
-const OPEN: CoverageRules = { minDimensionCoverage: 0, minWeightCoverage: 0 };
+const OPEN: CoverageRules = { minDimensionCoverage: 0 };
 const computeScorecard = (i: Parameters<typeof compute>[0], m: MetricDefinition[], d: DimensionDefinition[]) => compute(i, m, d, OPEN);
 
 const dims: DimensionDefinition[] = [
@@ -50,9 +50,9 @@ test("calificación a mano con cobertura parcial y renormalización", () => {
   assert.equal(byId.conversion.score, 100);
   assert.equal(byId.conversion.scored, 1);
   assert.equal(byId.pipeline.score, 50);
-  assert.equal(byId.marca.score, null);
-  // (100·20 + 50·10) / (20 + 10) = 83.33…
-  assert.ok(Math.abs((sc.overall as number) - 2500 / 30) < 1e-9);
+  assert.equal(byId.marca.score, 0);
+  // sin reglas de cobertura, marca (sin datos) vale 0: (100·20 + 50·10 + 0·10) / 40 = 62.5
+  assert.equal(sc.overall, 62.5);
   assert.equal(sc.coverage, 2 / 4);
   assert.equal(sc.metrics.find((m) => m.definition.id === "c2")?.status, "insufficient");
 });
@@ -60,13 +60,13 @@ test("calificación a mano con cobertura parcial y renormalización", () => {
 test("mover un peso cambia la general como se espera", () => {
   const heavyPipeline = dims.map((d) => (d.id === "pipeline" ? { ...d, weight: 30 } : d));
   const sc = computeScorecard({ c1: { value: 0.05 }, p1: { value: 30 } }, metrics, heavyPipeline);
-  // (100·20 + 50·30) / 50 = 70
-  assert.equal(sc.overall, 70);
+  // (100·20 + 50·30 + 0·10) / 60
+  assert.equal(sc.overall, 3500 / 60);
 });
 
-test("sin referencia propia no puntúa y sin datos da general nula", () => {
+test("sin referencia propia no puntúa y sin datos la general es 0, no un hueco", () => {
   const sc = computeScorecard({ c1: { value: 2, status: "no_reference" } }, metrics, dims);
-  assert.equal(sc.overall, null);
+  assert.equal(sc.overall, 0);
   assert.equal(sc.coverage, 0);
   assert.equal(sc.metrics[0].status, "no_reference");
 });
@@ -94,25 +94,23 @@ test("el catálogo real es coherente", () => {
   for (const d of DIMENSIONS) assert.ok(METRICS.some((m) => m.dimension === d.id), `${d.id} sin métricas`);
 });
 
-test("pocas métricas verdes no dan 100: la dimensión y la general quedan sin nota", () => {
-  // Una dimensión de nueve métricas con solo dos calificadas (22 %) no alcanza el 40 %.
+test("pocas métricas verdes no dan 100: el área vale 0 y la general no se infla", () => {
+  // Un área de nueve métricas con solo dos calificadas (22 %) no alcanza el 40 %.
   const many: MetricDefinition[] = Array.from({ length: 9 }, (_, i) => ({ ...up, id: `v${i}`, dimension: "conversion" as const }));
   const sc = compute({ v0: { value: 0.05 }, v1: { value: 0.05 } }, many, dims, DEFAULT_COVERAGE_RULES);
   const conv = sc.dimensions.find((d) => d.definition.id === "conversion")!;
-  assert.equal(conv.score, null);
+  assert.equal(conv.score, 0);
+  assert.equal(conv.rated, false);
   assert.equal(conv.partial, 100);
-  assert.equal(sc.overall, null);
+  assert.equal(sc.overall, 0);
   assert.equal(sc.weightCoverage, 0);
 });
 
-test("la general exige que las dimensiones calificadas cubran el peso mínimo", () => {
-  // Solo conversión (20 de 40) está calificada: 50 % < 60 %.
-  const sc = compute({ c1: { value: 0.05 } }, metrics, dims, DEFAULT_COVERAGE_RULES);
-  assert.equal(sc.dimensions.find((d) => d.definition.id === "conversion")!.score, 100);
-  assert.equal(sc.weightCoverage, 0.5);
-  assert.equal(sc.overall, null);
-  // Con pipeline también (30 de 40 = 75 %) sí se califica.
-  const ok = compute({ c1: { value: 0.05 }, p1: { value: 30 } }, metrics, dims, DEFAULT_COVERAGE_RULES);
-  assert.equal(ok.weightCoverage, 0.75);
-  assert.ok(Math.abs((ok.overall as number) - 2500 / 30) < 1e-9);
+test("las áreas sin base pesan con su peso completo: nada se renormaliza", () => {
+  // conversión (20) = 100 y pipeline (10) = 50 medidas; marca (10) sin datos vale 0.
+  const sc = compute({ c1: { value: 0.05 }, p1: { value: 30 } }, metrics, dims, DEFAULT_COVERAGE_RULES);
+  // (100·20 + 50·10 + 0·10) / 40 = 62.5
+  assert.equal(sc.overall, 62.5);
+  assert.equal(sc.weightCoverage, 0.75);
+  assert.equal(sc.dimensions.find((d) => d.definition.id === "marca")!.rated, false);
 });

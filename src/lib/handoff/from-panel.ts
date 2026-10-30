@@ -77,7 +77,7 @@ const BAND_IMPACT: Record<string, Impact> = { red: "alto", yellow: "medio", gree
 export function pointsIfGreen(metric: MetricResult, scorecard: Scorecard): number {
   if (metric.status !== "scored" || metric.score === undefined) return 0;
   const dim = scorecard.dimensions.find((d) => d.definition.id === metric.definition.dimension);
-  const scoredWeight = scorecard.dimensions.filter((d) => d.score !== null).reduce((a, d) => a + d.definition.weight, 0);
+  const scoredWeight = scorecard.dimensions.filter((d) => d.rated).reduce((a, d) => a + d.definition.weight, 0);
   if (!dim || !dim.scored || !scoredWeight) return 0;
   return Math.round(((dim.definition.weight * (100 - metric.score)) / dim.scored / scoredWeight) * 10) / 10;
 }
@@ -99,7 +99,7 @@ export async function handoffFromScorecard(scorecard: Scorecard, endDate: string
   const weak = metrics.filter((m) => m.status === "scored" && m.band !== "green");
   const missing = metrics.filter((m) => m.status === "no_data" || m.status === "not_tracked");
   const dim = dimension ? scorecard.dimensions.find((d) => d.definition.id === dimension) : null;
-  const overall = dim ? dim.score : scorecard.overall;
+  const overall = dim ? (dim.rated ? dim.score : null) : scorecard.overall;
   const items: HandoffItem[] = weak.map((m) => ({
     id: m.definition.id,
     title: m.definition.lever,
@@ -123,7 +123,7 @@ export async function handoffFromScorecard(scorecard: Scorecard, endDate: string
     asOf: endDate,
     summary: `${dim ? dim.definition.question : "Calificación general"}: ${overall === null ? "sin datos suficientes" : `${Math.round(overall)} de 100`}. Cobertura: ${Math.round(scorecard.coverage * 100)} % de las métricas tienen datos.`,
     items,
-    notes: missing.length ? [`Sin datos todavía (no cuentan en la calificación): ${missing.map((m) => m.definition.label).join(", ")}.`] : [],
+    notes: missing.length ? [`Sin datos todavía (su área vale 0 si no alcanza a medirse): ${missing.map((m) => m.definition.label).join(", ")}.`] : [],
     skills: weak.flatMap((m) => skillsForMetric(m.definition)),
     defaultItems: defaults,
   });

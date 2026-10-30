@@ -74,12 +74,12 @@ export default async function CalificacionPage() {
         <>
           <span className="flex items-start justify-between gap-3">
             <span className="leading-snug"><span className="block font-medium">{dim.definition.label}</span><span className="font-mono text-[10px] uppercase text-muted-foreground">pesa {dim.definition.weight} de 100</span></span>
-            <span className="font-display text-3xl leading-none tabular-nums">{dim.score === null ? "–" : formatNumber(dim.score)}</span>
+            <span className="font-display text-3xl leading-none tabular-nums">{formatNumber(dim.score)}</span>
           </span>
           <span className="line-clamp-3 text-xs text-muted-foreground">{ex.what}</span>
           {/* Barra de la nota con el color de su banda: se lee el estado sin leer el número. */}
           <span className="h-1.5 w-full overflow-hidden rounded-full bg-background" aria-hidden>
-            <span className="block h-full rounded-full" style={{ width: `${dim.score ?? 0}%`, background: BAND_COLOR[scoreBand(dim.score) ?? "none"] }} />
+            <span className="block h-full rounded-full" style={{ width: `${dim.score}%`, background: BAND_COLOR[dim.rated ? scoreBand(dim.score) ?? "none" : "none"] }} />
           </span>
           <span className="mt-auto pt-1"><Tally t={tl} /></span>
         </>
@@ -93,8 +93,8 @@ export default async function CalificacionPage() {
               <Tally t={tl} />
             </div>
             <span className="flex items-center gap-4">
-              <BandBadge band={scoreBand(dim.score)} status={dim.score === null ? "no_data" : "scored"} />
-              <span className="font-display text-5xl leading-none tabular-nums">{dim.score === null ? "–" : formatNumber(dim.score)}</span>
+              <BandBadge band={dim.rated ? scoreBand(dim.score) : undefined} status={dim.rated ? "scored" : "no_data"} />
+              <span className="font-display text-5xl leading-none tabular-nums">{formatNumber(dim.score)}</span>
             </span>
           </div>
           <dl className="grid gap-4 rounded-xl bg-card p-4 text-sm md:grid-cols-3">

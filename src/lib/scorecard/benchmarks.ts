@@ -48,6 +48,30 @@ export const METRICS: MetricDefinition[] = [
     ease: 2, lever: "Completar el perfil: fotos, servicios, publicaciones y reseñas recientes",
   },
   {
+    id: "organic_search_sessions", dimension: "visibilidad", label: "Visitas al sitio que llegan desde Google sin pagar", unit: "count",
+    direction: "up", green: 300, yellow: 100,
+    source: "Umbral propio, ajustable: sesiones de Organic Search en GA4 en 28 días", asOf: AS_OF, own: true,
+    ease: 2, lever: "Páginas por servicio y búsquedas con intención de compra para que Google mande más visitas",
+  },
+  {
+    id: "organic_search_share", dimension: "visibilidad", label: "Parte de las visitas que llega desde Google sin pagar", unit: "pct",
+    direction: "up", green: 0.35, yellow: 0.15, minSample: 100,
+    source: "Umbral propio, ajustable: un sitio sano no vive solo de anuncios", asOf: AS_OF, own: true,
+    ease: 2, lever: "Subir el contenido y el SEO hasta que el orgánico sostenga una parte real del tráfico",
+  },
+  {
+    id: "organic_search_delta", dimension: "visibilidad", label: "Visitas desde Google vs 28 días previos", unit: "delta",
+    direction: "up", green: 0.1, yellow: -0.1, minSample: 30,
+    source: "Umbral propio: crecer ≥ 10 % por periodo", asOf: AS_OF, own: true,
+    ease: 1, lever: "Revisar qué páginas dejaron de recibir visitas desde Google y retomarlas",
+  },
+  {
+    id: "direct_sessions", dimension: "visibilidad", label: "Visitas que escriben tu dirección o te tienen guardado", unit: "count",
+    direction: "up", green: 100, yellow: 30,
+    source: "Umbral propio, ajustable: sesiones Direct en GA4 en 28 días; mide que te recuerden", asOf: AS_OF, own: true,
+    ease: 1, lever: "Poner la dirección del sitio en firmas, tarjetas, redes y materiales impresos",
+  },
+  {
     id: "geo_tecnico", dimension: "visibilidad", label: "Chequeos técnicos de visibilidad en IA", unit: "pct",
     direction: "up", green: 0.9, yellow: 0.7,
     source: "Umbral propio: chequeos del skill seo-geo (bots de IA, marca visible sin JavaScript, schema, robots, sitemap)", asOf: AS_OF, own: true,

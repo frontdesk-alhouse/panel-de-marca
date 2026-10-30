@@ -13,8 +13,8 @@ interface Props {
 
 /** Cifra protagonista: la calificación general y, sobre todo, de qué está hecha y qué falta. */
 export function ScoreHeadline({ overall, weightCoverage, dimensions, isBaseline, windowFrom, endDate }: Props) {
-  const rated = dimensions.filter((d) => d.score !== null);
-  const pending = dimensions.filter((d) => d.score === null);
+  const rated = dimensions.filter((d) => d.rated);
+  const pending = dimensions.filter((d) => !d.rated);
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-end gap-x-6 gap-y-2">
@@ -23,9 +23,10 @@ export function ScoreHeadline({ overall, weightCoverage, dimensions, isBaseline,
           <span className="text-[0.3em] text-muted-foreground align-top ml-1.5">/100</span>
         </p>
         <div className="pb-3 space-y-1 text-sm text-muted-foreground max-w-[44ch]">
-          {overall === null
-            ? <p><strong className="font-medium text-foreground">Todavía no hay base para dar una nota.</strong> Solo hay datos suficientes en {rated.length} de {dimensions.length} áreas ({formatPct(weightCoverage, 0)} del peso) y hace falta al menos el 60 %. Una nota sobre tan poco sería engañosa.</p>
-            : <p>Se califica con {rated.length} de {dimensions.length} áreas, que suman el {formatPct(weightCoverage, 0)} del peso. {pending.length > 0 && "Lo que falta no se da por bueno ni por malo: no cuenta hasta que haya datos."}</p>}
+          <p>
+            {rated.length} de {dimensions.length} áreas tienen datos suficientes ({formatPct(weightCoverage, 0)} del peso).
+            {pending.length > 0 && " Las demás valen 0 hasta que haya con qué medirlas: la nota no se infla por lo que no se sabe."}
+          </p>
           {isBaseline && <p>Es línea base: todavía no hay dos periodos completos para comparar.</p>}
           <p>Del {windowFrom} al {endDate}.</p>
         </div>
@@ -42,14 +43,14 @@ export function ScoreHeadline({ overall, weightCoverage, dimensions, isBaseline,
           </dd>
         </div>
         <div className="space-y-1.5 rounded-xl bg-card p-4">
-          <dt className="font-mono text-[11px] uppercase text-muted-foreground">Lo que todavía no se puede calificar</dt>
+          <dt className="font-mono text-[11px] uppercase text-muted-foreground">Sin datos suficientes (valen 0)</dt>
           <dd>
             {pending.length === 0 ? <span className="text-muted-foreground">Todas las áreas tienen base suficiente.</span> : (
               <ul className="space-y-0.5">
                 {pending.map((d) => (
                   <li key={d.definition.id} className="flex justify-between gap-3">
                     <span>{d.definition.label}</span>
-                    <span className="text-xs text-muted-foreground">{d.scored} de {d.total} métricas con datos{d.partial !== null && ` · parcial ${formatNumber(d.partial)}`}</span>
+                    <span className="text-xs text-muted-foreground">{d.scored} de {d.total} métricas con datos{d.partial !== null && ` · lo medido da ${formatNumber(d.partial)}`}</span>
                   </li>
                 ))}
               </ul>

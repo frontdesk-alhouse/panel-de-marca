@@ -30,11 +30,11 @@ test("Área: nombra la métrica que cambió de color", () => {
   assert.deepEqual(e.drivers.map((d) => [d.label, d.change]), [["Métrica 1", "amarillo → verde"]]);
 });
 
-test("entrar o salir de la calificación se explica, no se esconde", () => {
-  const pts = [pt("2026-10-01", 40, 50, 20, 50, 50), pt("2026-10-29", null, 50, null, 50, 50)];
+test("un área que cae a 0 por falta de datos se nombra como bajada", () => {
+  const pts = [pt("2026-10-01", 40, 50, 20, 50, 50), pt("2026-10-29", 30, 50, 0, 50, 50)];
   const e = explainChange(pts, "2026-10-29", "overall", meta)!;
-  assert.equal(e.delta, null);
-  assert.match(e.drivers[0].change, /dejó de calificarse/);
+  assert.equal(e.delta, -10);
+  assert.deepEqual([e.drivers[0].label, e.drivers[0].change, e.drivers[0].direction], ["Área B", "20 → 0", "down"]);
 });
 
 test("el primer día no tiene con qué compararse", () => {
@@ -43,11 +43,11 @@ test("el primer día no tiene con qué compararse", () => {
   assert.deepEqual(e.drivers, []);
 });
 
-test("un día viejo con 100 sobre pocas métricas deja de contar", () => {
+test("un día viejo con 100 sobre pocas métricas pasa a 0 en esa área", () => {
   const weights = { a: 20, b: 10, c: 70 };
-  // a: 1 de 9 métricas (11 %), el resto sin datos → no alcanza.
   const day = regradeDay([{ id: "a", score: 100, scored: 1, total: 9 }, { id: "b", score: 100, scored: 3, total: 4 }], weights);
-  assert.equal(day.dimensions.a, null);
+  assert.equal(day.dimensions.a, 0);
   assert.equal(day.dimensions.b, 100);
-  assert.equal(day.overall, null); // solo b: 10 % del peso
+  assert.equal(day.dimensions.c, 0); // nunca se midió
+  assert.equal(day.overall, 10);
 });

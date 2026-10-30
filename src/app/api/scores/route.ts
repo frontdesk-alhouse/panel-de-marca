@@ -2,6 +2,7 @@ import { z } from "zod";
 import { snapshotScorecard } from "@/lib/scorecard/load";
 import { isViewerRequest, unauthorized, requireWorkspace } from "@/lib/api-auth";
 import { addDays, todayIso } from "@/lib/dates";
+import { dataSpan } from "@/lib/metrics-store";
 
 // Reconstruir 120 días son 120 cálculos seguidos.
 export const maxDuration = 300;
@@ -24,9 +25,12 @@ export async function POST(req: Request) {
       // Se recalculan todos los días, también los ya guardados: si cambian las reglas de la nota
       // (o llegaron datos tarde), el historial viejo no se queda con calificaciones que ya no valen.
       const yesterday = addDays(todayIso(), -1);
+      const first = (await dataSpan()).firstDate; // antes del primer dato no hay nada que calificar
       let saved = 0;
       for (let d = parsed.data.backfillDays - 1; d >= 0; d--) {
-        await snapshotScorecard(addDays(yesterday, -d));
+        const date = addDays(yesterday, -d);
+        if (first && date < first) continue;
+        await snapshotScorecard(date);
         saved++;
       }
       return Response.json({ saved });
