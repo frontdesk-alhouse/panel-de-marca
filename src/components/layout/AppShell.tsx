@@ -121,7 +121,7 @@ export function AppShell({ viewer, logout, nav, children }: { viewer: Viewer; lo
   });
   return (
     <div className="flex min-h-[calc(100dvh-1rem)] md:min-h-[calc(100dvh-1.5rem)]">
-      <aside className={`sticky top-3 hidden h-[calc(100dvh-1.5rem)] shrink-0 flex-col gap-6 border-r border-border py-5 lg:flex ${collapsed ? "w-16 px-2" : "w-64 px-3"}`}>
+      <aside className={`sticky top-3 hidden h-[calc(100dvh-1.5rem)] shrink-0 flex-col gap-6 rounded-l-[20px] border-r border-border bg-background py-5 lg:flex ${collapsed ? "w-16 px-2" : "w-64 px-3"}`}>
         <Brand compact={collapsed} />
         <div className="min-h-0 flex-1 overflow-y-auto"><Suspense fallback={null}><SidebarNav collapsed={collapsed} {...nav} /></Suspense></div>
         {!collapsed && <CommunityCard />}
@@ -138,7 +138,7 @@ export function AppShell({ viewer, logout, nav, children }: { viewer: Viewer; lo
         </SheetContent>
       </Sheet>
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-20 flex h-14 items-center gap-3 rounded-t-[20px] border-b border-border/60 glass-bar px-4 md:px-8">
+        <header className="sticky top-0 z-20 flex h-14 items-center gap-3 rounded-tr-[20px] border-b border-border/60 glass-bar px-4 md:px-8">
           <button type="button" onClick={() => setOpen(true)} aria-label={t.shell.openNav} className="grid h-9 w-9 place-items-center rounded-md hover:bg-card lg:hidden">
             <Menu className="h-5 w-5" aria-hidden />
           </button>
