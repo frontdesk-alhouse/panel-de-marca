@@ -10,6 +10,15 @@ import { SidebarNav, useCrumbs, type NavOptions } from "./Sidebar";
 import { useT } from "@/i18n/client";
 import { ThemeToggle } from "./ThemeToggle";
 import { AppLauncher } from "./AppLauncher";
+import { SyncNow } from "./SyncNow";
+import { ViewModeToggle } from "./ViewModeToggle";
+import { Onboarding } from "@/components/onboarding/Onboarding";
+import { ShareButton } from "@/components/handoff/ShareButton";
+import { PUBLIC_REPO_URL } from "@/lib/skills/catalog";
+import { AppearanceMenu } from "./AppearanceMenu";
+import { CommunityCard } from "./CommunityCard";
+import { UpdateNotice } from "./UpdateNotice";
+import { useLogo } from "./appearance";
 
 interface Viewer { name: string; email: string }
 
@@ -20,10 +29,13 @@ const COLLAPSE_KEY = "ah-panel-sidebar-collapsed";
 function Brand({ compact = false }: { compact?: boolean }) {
   const t = useT();
   const name = useWorkspace().brand.name;
-  if (compact) return <Link href="/" aria-label={`${name} · ${t.connect.home}`} className="mx-auto font-display text-lg leading-none text-foreground">{initials(name)}</Link>;
+  const logo = useLogo();
+  const mark = logo && <img src={logo} alt="" className={compact ? "h-8 w-8 rounded-md object-contain" : "h-7 w-7 shrink-0 rounded-md object-contain"} />;
+  if (compact) return <Link href="/" aria-label={`${name} · ${t.connect.home}`} className="mx-auto font-display text-lg leading-none text-foreground">{mark || initials(name)}</Link>;
   return (
-    <Link href="/" className="flex items-baseline gap-2 px-2.5 text-foreground">
-      <span className="font-display text-lg leading-none">{name}</span>
+    <Link href="/" className="flex items-center gap-2 px-2.5 text-foreground">
+      {mark}
+      <span className="truncate font-display text-lg leading-none">{name}</span>
       <span className="font-mono text-[11px] uppercase text-muted-foreground">{t.shell.panel}</span>
     </Link>
   );
@@ -35,6 +47,7 @@ function UserBox({ viewer, logout, compact = false }: { viewer: Viewer; logout?:
     return (
       <div className="flex flex-col items-center gap-1">
         <span className="grid h-8 w-8 place-items-center rounded-full bg-primary font-mono text-[11px] text-primary-foreground" title={viewer.name}>{initials(viewer.name)}</span>
+        <AppearanceMenu />
         <ThemeToggle />
         {logout && (
           <form action={logout}>
@@ -48,6 +61,7 @@ function UserBox({ viewer, logout, compact = false }: { viewer: Viewer; logout?:
     <div className="flex items-center gap-2 rounded-xl bg-card p-2">
       <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-primary font-mono text-[11px] text-primary-foreground" aria-hidden>{initials(viewer.name)}</span>
       <span className="min-w-0 flex-1 truncate text-sm" title={viewer.email}>{viewer.name}</span>
+      <AppearanceMenu />
       <ThemeToggle />
       {logout && (
         <form action={logout}>
@@ -110,6 +124,8 @@ export function AppShell({ viewer, logout, nav, children }: { viewer: Viewer; lo
       <aside className={`sticky top-3 hidden h-[calc(100dvh-1.5rem)] shrink-0 flex-col gap-6 border-r border-border py-5 lg:flex ${collapsed ? "w-16 px-2" : "w-64 px-3"}`}>
         <Brand compact={collapsed} />
         <div className="min-h-0 flex-1 overflow-y-auto"><Suspense fallback={null}><SidebarNav collapsed={collapsed} {...nav} /></Suspense></div>
+        {!collapsed && <CommunityCard />}
+        {!collapsed && <ViewModeToggle />}
         <UserBox viewer={viewer} logout={logout} compact={collapsed} />
       </aside>
       <Sheet open={open} onOpenChange={setOpen}>
@@ -117,6 +133,7 @@ export function AppShell({ viewer, logout, nav, children }: { viewer: Viewer; lo
           <SheetTitle className="sr-only">{t.shell.navigation}</SheetTitle>
           <Brand />
           <div className="min-h-0 flex-1 overflow-y-auto"><Suspense fallback={null}><SidebarNav onNavigate={() => setOpen(false)} {...nav} /></Suspense></div>
+          <ViewModeToggle />
           <UserBox viewer={viewer} logout={logout} />
         </SheetContent>
       </Sheet>
@@ -130,8 +147,9 @@ export function AppShell({ viewer, logout, nav, children }: { viewer: Viewer; lo
             {collapsed ? <PanelLeftOpen className="h-5 w-5" aria-hidden /> : <PanelLeftClose className="h-5 w-5" aria-hidden />}
           </button>
           <Suspense fallback={null}><Crumbs /></Suspense>
-          <div className="ml-auto flex items-center gap-2"><AskBox /><AppLauncher /></div>
+          <div className="ml-auto flex items-center gap-2"><UpdateNotice /><AskBox /><SyncNow /><ShareButton url={PUBLIC_REPO_URL} title={t.shell.defaultTitle} text={t.share.text} label={t.share.button} copiedLabel={t.share.copied} failedLabel={t.skills.copyFailed} isCompact /><AppLauncher /></div>
         </header>
+        <Onboarding />
         <main className={`mx-auto w-full min-w-0 px-4 py-8 md:px-8 md:py-10 ${collapsed ? "max-w-[1600px]" : "max-w-[1320px]"}`}>{children}</main>
       </div>
     </div>

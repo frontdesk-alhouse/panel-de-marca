@@ -1,3 +1,4 @@
+import { useId } from "react";
 import {
   Activity, ArrowDownRight, ArrowDownToLine, ArrowUpRight, BadgeDollarSign, Eye, Factory, Flame, Gauge, Heart, Inbox, ListOrdered,
   LogOut, MousePointerClick, Percent, Radio, Repeat, Timer, Undo2, User, UserPlus, Users, type LucideIcon,
@@ -54,15 +55,27 @@ function RefLine({ icon: Icon, who, r }: { icon: typeof User; who: string; r: Re
   );
 }
 
-function Sparkline({ values }: { values: number[] }) {
+/** Mini tendencia con degradado bajo la curva; el color dice si va bien (verde), mal (rojo) o sin juicio (azul). */
+function Sparkline({ values, tone = "neutral" }: { values: number[]; tone?: "good" | "bad" | "neutral" }) {
+  const id = useId().replace(/:/g, "");
   if (values.length < 2) return null;
   const max = Math.max(...values, 1);
   const w = 100;
   const h = 28;
-  const pts = values.map((v, i) => `${(i / (values.length - 1)) * w},${h - (v / max) * (h - 2) - 1}`).join(" ");
+  const xy = values.map((v, i) => [(i / (values.length - 1)) * w, h - (v / max) * (h - 2) - 1] as const);
+  const line = xy.map(([x, y]) => `${x},${y}`).join(" ");
+  const area = `0,${h} ${line} ${w},${h}`;
+  const color = tone === "good" ? "var(--good)" : tone === "bad" ? "var(--bad)" : "var(--series-1)";
   return (
-    <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" className="w-full h-7" aria-hidden>
-      <polyline points={pts} fill="none" stroke="currentColor" strokeWidth={1.5} vectorEffect="non-scaling-stroke" className="text-foreground/70" />
+    <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" className="h-8 w-full" aria-hidden>
+      <defs>
+        <linearGradient id={`spark-${id}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity={0.32} />
+          <stop offset="100%" stopColor={color} stopOpacity={0} />
+        </linearGradient>
+      </defs>
+      <polygon points={area} fill={`url(#spark-${id})`} />
+      <polyline points={line} fill="none" stroke={color} strokeWidth={1.75} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
     </svg>
   );
 }
@@ -97,7 +110,7 @@ export function Kpi({ label, value, current, previous, higherIsBetter = true, hi
         )}
       </p>
       )}
-      {spark && <Sparkline values={spark} />}
+      {spark && <Sparkline values={spark} tone={change === null ? "neutral" : good ? "good" : "bad"} />}
       {hint && <p className="font-mono text-[10px] uppercase text-muted-foreground">{hint}</p>}
     </div>
   );

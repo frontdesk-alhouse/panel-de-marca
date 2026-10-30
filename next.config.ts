@@ -27,6 +27,10 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ["@electric-sql/pglite"],
   turbopack: { resolveAlias: { "@brand-fonts": fontsModule } },
   poweredByHeader: false,
+  // Next 16 escribe un AGENTS.md al correr `next dev`; el repo no lo usa.
+  agentRules: false,
+  // La descarga de skills lee la carpeta skills/ en tiempo de ejecución: Vercel debe empaquetarla.
+  outputFileTracingIncludes: { "/api/skills/[id]/zip": ["./skills/**/*"], "/api/skills/[id]/skill-md": ["./skills/*/SKILL.md"] },
   headers: async () => [{ source: "/:path*", headers: securityHeaders }],
 };
 

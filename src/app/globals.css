@@ -148,4 +148,7 @@
     @apply text-foreground font-sans;
     font-feature-settings: "tnum" 1;
   }
+  /* Tracking por tamaño (Apple, «Details of UI Typography»): lo grande se aprieta, lo chico queda en 0. */
+  .font-display { letter-spacing: -0.015em; }
+  h1.font-display { letter-spacing: -0.025em; line-height: 1.05; }
 }

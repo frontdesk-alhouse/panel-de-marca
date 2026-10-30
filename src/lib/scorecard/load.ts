@@ -6,6 +6,7 @@ import { dataSpan, latestUpTo, sumsForWindow } from "@/lib/metrics-store";
 import { METRICS } from "./benchmarks";
 import { DIMENSIONS, PIPELINE_WINDOW_DAYS, WINDOW_DAYS } from "./config";
 import { buildInputs } from "./inputs";
+import { geoScoreInputs } from "@/lib/geo/store";
 import { rankLevers, type Lever } from "./priorities";
 import { computeKpis, type Kpi } from "@/lib/kpis";
 import { computeScorecard } from "./score";
@@ -29,7 +30,7 @@ export async function loadScorecard(endDate = addDays(todayIso(), -1)): Promise<
   const pipelineFrom = addDays(endDate, -(PIPELINE_WINDOW_DAYS - 1));
   const db = await getDb();
 
-  const [cur, prev, pipe, latest, latestPrev, span, leadRows] = await Promise.all([
+  const [cur, prev, pipe, latest, latestPrev, span, leadRows, geo] = await Promise.all([
     sumsForWindow(current),
     sumsForWindow(previous),
     sumsForWindow({ from: pipelineFrom, to: endDate }),
@@ -37,6 +38,7 @@ export async function loadScorecard(endDate = addDays(todayIso(), -1)): Promise<
     latestUpTo(previous.to),
     dataSpan(),
     db.select().from(leads).where(gte(leads.createdAt, new Date(`${pipelineFrom}T06:00:00Z`))),
+    geoScoreInputs(endDate),
   ]);
 
   const windows = { current: cur, previous: prev, pipeline: pipe, latest, latestAtPreviousEnd: latestPrev };
@@ -46,6 +48,7 @@ export async function loadScorecard(endDate = addDays(todayIso(), -1)): Promise<
       createdAt: l.createdAt, firstContactAt: l.firstContactAt, proposalAt: l.proposalAt,
       stage: l.stage, qualified: l.qualified, value: l.value, package: l.package,
     })),
+    geo,
   );
   const scorecard = computeScorecard(inputs, METRICS, DIMENSIONS);
   const daysOfData = span.firstDate ? daysBetween(span.firstDate, endDate) + 1 : 0;
@@ -63,7 +66,7 @@ export async function loadScorecard(endDate = addDays(todayIso(), -1)): Promise<
 }
 
 /** Guarda la calificación del día para verla en el tiempo. Idempotente por fecha. */
-export async function snapshotScorecard(endDate?: string) {
+export async function snapshotScorecard(endDate?: string, opts: { keepExisting?: boolean } = {}) {
   const loaded = await loadScorecard(endDate);
   const { scorecard } = loaded;
   const values = {
@@ -77,6 +80,8 @@ export async function snapshotScorecard(endDate?: string) {
     })),
   };
   const db = await getDb();
-  await db.insert(scores).values(values).onConflictDoUpdate({ target: scores.periodEnd, set: values });
+  // Al reconstruir el historial no se pisa lo que ya guardó el cron (eso sí refleja el día real).
+  if (opts.keepExisting) await db.insert(scores).values(values).onConflictDoNothing({ target: scores.periodEnd });
+  else await db.insert(scores).values(values).onConflictDoUpdate({ target: scores.periodEnd, set: values });
   return loaded;
 }

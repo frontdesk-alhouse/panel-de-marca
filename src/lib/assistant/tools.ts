@@ -10,7 +10,7 @@ export function assistantTools(name = ws().brand.name) {
   return [
   betaZodTool({
     name: "leer_seccion",
-    description: `Lee los datos actuales de una sección del panel de ${name} (KPIs, tablas y hallazgos ya calculados). Úsala antes de afirmar cualquier cifra. Secciones: resumen (lo más importante de todo), trafico, seo, ideas (temas de blog, Reddit, competencia), google_ads, comportamiento (Clarity: scroll, frustración), sitio (embudo y contactos), competencia (fuerza SEO, Google, Instagram de cada estudio), social (Instagram y Meta Ads), crm (pipeline agregado), negocio (métricas de negocio: win rate, costo por lead calificado, CAC, ROAS, ticket promedio, ciclo de venta, pipeline ponderado, ingreso recurrente, contra sus metas), calificacion (calificación general con dimensiones).`,
+    description: `Lee los datos actuales de una sección del panel de ${name} (KPIs, tablas y hallazgos ya calculados). Úsala antes de afirmar cualquier cifra. Secciones: resumen (lo más importante de todo), trafico, seo, ideas (temas de blog, Reddit, competencia), google_ads, comportamiento (Clarity: scroll, frustración), sitio (embudo y contactos), competencia (fuerza SEO, Google, Instagram de cada estudio), social (Instagram y Meta Ads), crm (pipeline agregado), negocio (métricas de negocio: win rate, costo por lead calificado, CAC, ROAS, ticket promedio, ciclo de venta, pipeline ponderado, ingreso recurrente, contra sus metas), calificacion (calificación general con dimensiones), visibilidad_ia (si los asistentes de IA pueden leer el sitio y si mencionan a la marca), cambios (bitácora de cambios propios y externos y la calificación día a día).`,
     inputSchema: z.object({
       seccion: z.enum(SECTION_KEYS),
       periodo: period,

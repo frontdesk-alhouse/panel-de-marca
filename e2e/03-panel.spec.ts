@@ -1,5 +1,11 @@
 import { expect, test } from "@playwright/test";
 
+test.beforeEach(async ({ page }) => {
+  // La guía de bienvenida ya se vio (si no, el diálogo tapa la página).
+  await page.addInitScript(() => localStorage.setItem("ah-panel-onboarding-v1", "1"));
+});
+
+
 /** El panel ya configurado (lo dejó 02): menú, secciones sin conexión, Ajustes, competencia y CRM. */
 test.describe("panel configurado", () => {
   test("la marca de la configuración quedó guardada", async ({ page }) => {
@@ -23,7 +29,7 @@ test.describe("panel configurado", () => {
     await expect(page.getByRole("heading", { name: "Conecta Google Analytics y Search Console" })).toBeVisible();
     await page.getByRole("link", { name: "Conectar", exact: true }).click();
     await expect(page).toHaveURL(/\/ajustes#google/);
-    await expect(page.locator("section#google").getByLabel("ID de cliente OAuth")).toBeVisible();
+    await expect(page.locator("section#google").getByRole("link", { name: "Conectar con Google" })).toBeVisible();
   });
 
   test("las pestañas de Ajustes se usan con el teclado", async ({ page }) => {

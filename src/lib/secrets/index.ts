@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { chmodSync, existsSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { isLocalMode } from "@/lib/mode";
 import { resetRedditToken } from "@/lib/ideas/collect";
@@ -20,7 +20,9 @@ export class SecretsReadOnlyError extends Error {
   }
 }
 
-export const envFilePath = (): string => path.join(process.cwd(), ".env.local");
+/** El archivo de llaves. PANEL_ENV_FILE lo cambia (las pruebas usan uno aparte y nunca tocan el real). */
+export const envFilePath = (): string =>
+  process.env.PANEL_ENV_FILE ? path.resolve(process.env.PANEL_ENV_FILE) : path.join(process.cwd(), ".env.local");
 
 export function getSecret(key: string): string | undefined {
   const value = process.env[key];
@@ -41,6 +43,7 @@ export function setSecrets(changes: Readonly<Partial<Record<WritableSecret, stri
   const bad = Object.keys(changes).filter((k) => !isWritableSecret(k));
   if (bad.length > 0) throw new Error(`Estas variables no se pueden cambiar desde el panel: ${bad.join(", ")}`);
   const file = envFilePath();
+  mkdirSync(path.dirname(file), { recursive: true });
   const current = existsSync(file) ? readFileSync(file, "utf8") : "";
   const next = mergeEnv(current, changes as Record<string, string | null>);
   const tmp = `${file}.${randomBytes(6).toString("hex")}.tmp`;

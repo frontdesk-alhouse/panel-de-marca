@@ -17,11 +17,14 @@ const env = {
   ...Object.fromEntries(KEYS.map((k) => [k, ""])),
   APP_MODE: "local",
   DATABASE_URL: "pglite:./data/e2e",
+  // Las llaves que guarde la prueba van a un archivo aparte: el .env.local real no se toca.
+  PANEL_ENV_FILE: "data/e2e-env/.env.local",
   NEXT_TELEMETRY_DISABLED: "1",
 };
 
 rmSync("data/e2e", { recursive: true, force: true });
 rmSync("data/e2e.lock", { force: true });
+rmSync("data/e2e-env", { recursive: true, force: true });
 if (!process.env.E2E_SKIP_BUILD) execSync(`"${process.execPath}" "${next}" build`, { stdio: "inherit", env });
 const server = spawn(process.execPath, [next, "start", "-H", "127.0.0.1", "-p", port], { stdio: "inherit", env });
 for (const s of ["SIGINT", "SIGTERM"]) process.on(s, () => server.kill(s));

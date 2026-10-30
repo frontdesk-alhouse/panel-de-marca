@@ -1,0 +1,141 @@
+{
+  "_nota": "Respuesta FICTICIA y recortada de PageSpeed Insights API v5 para probar velocidad.py sin red. Sitio inventado.",
+  "id": "https://www.example.com/",
+  "analysisUTCTimestamp": "2026-10-29T16:00:00.000Z",
+  "loadingExperience": {
+    "id": "https://www.example.com/",
+    "origin_fallback": true,
+    "metrics": {}
+  },
+  "originLoadingExperience": {
+    "id": "https://www.example.com",
+    "overall_category": "SLOW",
+    "metrics": {
+      "LARGEST_CONTENTFUL_PAINT_MS": {
+        "percentile": 4300,
+        "category": "SLOW"
+      },
+      "INTERACTION_TO_NEXT_PAINT": {
+        "percentile": 180,
+        "category": "FAST"
+      },
+      "CUMULATIVE_LAYOUT_SHIFT_SCORE": {
+        "percentile": 12,
+        "category": "AVERAGE"
+      },
+      "FIRST_CONTENTFUL_PAINT_MS": {
+        "percentile": 2400,
+        "category": "AVERAGE"
+      },
+      "EXPERIMENTAL_TIME_TO_FIRST_BYTE": {
+        "percentile": 900,
+        "category": "AVERAGE"
+      }
+    }
+  },
+  "lighthouseResult": {
+    "lighthouseVersion": "12.x (ficticio)",
+    "configSettings": {
+      "formFactor": "mobile"
+    },
+    "categories": {
+      "performance": {
+        "score": 0.48
+      }
+    },
+    "audits": {
+      "largest-contentful-paint": {
+        "score": 0.1,
+        "numericValue": 6100
+      },
+      "cumulative-layout-shift": {
+        "score": 0.7,
+        "numericValue": 0.14
+      },
+      "total-blocking-time": {
+        "score": 0.6,
+        "numericValue": 420
+      },
+      "first-contentful-paint": {
+        "score": 0.5,
+        "numericValue": 2900
+      },
+      "speed-index": {
+        "score": 0.4,
+        "numericValue": 6200
+      },
+      "largest-contentful-paint-element": {
+        "score": 0,
+        "scoreDisplayMode": "informative",
+        "details": {
+          "items": [
+            {
+              "items": [
+                {
+                  "node": {
+                    "nodeLabel": "Imagen del hero",
+                    "snippet": "<img src=\"hero-4000px.png\" loading=\"lazy\" class=\"hero-image\">"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "modern-image-formats": {
+        "title": "Publica imágenes en formatos modernos",
+        "score": 0.2,
+        "details": {
+          "type": "opportunity",
+          "overallSavingsMs": 2100,
+          "overallSavingsBytes": 1843200
+        }
+      },
+      "uses-responsive-images": {
+        "title": "Usa imágenes de tamaño adecuado",
+        "score": 0.3,
+        "details": {
+          "type": "opportunity",
+          "overallSavingsMs": 1500,
+          "overallSavingsBytes": 1228800
+        }
+      },
+      "render-blocking-resources": {
+        "title": "Elimina recursos que bloquean el renderizado",
+        "score": 0.4,
+        "details": {
+          "type": "opportunity",
+          "overallSavingsMs": 900
+        }
+      },
+      "third-party-summary": {
+        "title": "Reduce el impacto del código de terceros",
+        "score": 0.5,
+        "metricSavings": {
+          "TBT": 300
+        },
+        "details": {
+          "type": "table"
+        }
+      },
+      "unsized-images": {
+        "title": "Las imágenes no tienen width y height explícitos",
+        "score": 0.5,
+        "metricSavings": {
+          "CLS": 0.08
+        },
+        "details": {
+          "type": "table"
+        }
+      },
+      "font-display": {
+        "title": "Todo el texto sigue visible durante la carga de fuentes",
+        "score": 1,
+        "details": {
+          "type": "opportunity",
+          "overallSavingsMs": 0
+        }
+      }
+    }
+  }
+}

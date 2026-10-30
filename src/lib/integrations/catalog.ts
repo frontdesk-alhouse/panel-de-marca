@@ -59,7 +59,7 @@ export const INTEGRATIONS: readonly Integration[] = [
   {
     id: "google",
     cost: "free",
-    minutes: 15,
+    minutes: 2,
     fields: [
       { key: "GOOGLE_CLIENT_ID", secret: false, placeholder: "….apps.googleusercontent.com" },
       { key: "GOOGLE_CLIENT_SECRET", secret: true, placeholder: "GOCSPX-…" },
@@ -126,11 +126,14 @@ export const INTEGRATIONS: readonly Integration[] = [
     minutes: 5,
     fields: [{ key: "ANTHROPIC_API_KEY", secret: true, placeholder: "sk-ant-…" }],
     steps: [
-      { url: "https://console.anthropic.com/settings/billing" },
-      { url: "https://console.anthropic.com/settings/keys" },
+      { url: "https://platform.claude.com/settings/billing" },
+      { url: "https://platform.claude.com/settings/keys" },
     ],
   },
 ];
+
+/** Orden en que conviene conectar: primero lo gratis que más enciende. */
+export const RECOMMENDED_ORDER: readonly IntegrationId[] = ["google", "clarity", "psi", "meta", "apify", "anthropic"];
 
 export const integration = (id: IntegrationId): Integration => {
   const found = INTEGRATIONS.find((i) => i.id === id);

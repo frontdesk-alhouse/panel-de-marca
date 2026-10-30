@@ -7,6 +7,9 @@ import { formatNumber, formatPct } from "@/lib/format";
 import { SectionHeader } from "@/components/dash/SectionHeader";
 import { WithRail } from "@/components/dash/InsightRail";
 import { forAnchor } from "@/lib/analytics/insights";
+import { CopyForClaude } from "@/components/handoff/CopyForClaude";
+import { handoffFromInsights } from "@/lib/handoff/from-panel";
+import { todayIso } from "@/lib/dates";
 import { Kpi, KpiRow } from "@/components/dash/Kpi";
 import { TrendChart } from "@/components/dash/TrendChart";
 import { BarList } from "@/components/dash/BarList";
@@ -44,10 +47,16 @@ export default async function SeoPage({ searchParams }: { searchParams: Promise<
     estado: [t.row ? (t.row.position !== null && t.row.position <= 10 ? { text: "Primera página", tone: "good" as const } : { text: "Apareces, lejos", tone: "watch" as const }) : { text: "No apareces", tone: "bad" as const }],
   }));
   const totalImpr = d.split.brand.impressions + d.split.nonBrand.impressions;
+  const missingTargets = d.targets.filter((t) => !t.row).map((t) => t.query);
+  const handoff = await handoffFromInsights("SEO", d.trend.at(-1)?.date ?? todayIso(), [
+    ...d.insights,
+    ...(missingTargets.length ? [{ tone: "bad" as const, weight: 2 as const, title: `No apareces en ${missingTargets.length} búsquedas objetivo`, detail: `Crear o reforzar páginas para: ${missingTargets.slice(0, 12).join(", ")}.` }] : []),
+  ], ["seo-geo"]);
 
   return (
     <div className="space-y-8">
       <SectionHeader title={TITLE} question={msg.pages["/seo"].question} path="/seo" period={period} />
+      <CopyForClaude payload={handoff} className="max-w-xl" />
       <WithRail insights={d.insights}>
       <KpiRow>
         <Kpi comparable={d.comparable} refs={d.refs.clicks} term="clicks" label="Organic clicks" value={formatNumber(d.kpis.clicks[0] ?? 0)} current={d.kpis.clicks[0]} previous={d.kpis.clicks[1]} spark={d.trend.map((t) => t.clicks)} />

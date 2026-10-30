@@ -8,6 +8,7 @@ import { loadWeeklyMetrics } from "@/lib/analytics/sections/weekly-metrics";
 import { isLocalMode } from "@/lib/mode";
 import { ConnectCard } from "@/components/layout/ConnectEmptyState";
 import { getMessages } from "@/i18n/server";
+import { handoffFromWeekly } from "@/lib/handoff/from-panel";
 
 export const dynamic = "force-dynamic";
 
@@ -35,12 +36,13 @@ export default async function InicioPage({ searchParams }: { searchParams: Promi
   const params = await searchParams;
   const q = params.q?.slice(0, 500);
   const metrics = latest ? await loadWeeklyMetrics(latest.range).catch((e) => { console.error("[inicio] métricas", e); return null; }) : null;
+  const handoff = latest ? await handoffFromWeekly(latest.analisis, latest.range.to) : null;
   return (
     // Dos scrolls independientes: el chat se desplaza dentro de su caja y la columna derecha en la suya.
     <div className="grid gap-6 xl:h-[calc(100dvh-10rem)] xl:grid-cols-[minmax(0,1fr)_400px]">
       <div className="h-[75dvh] min-h-0 xl:h-full"><Chat suggestions={SUGGESTED_QUESTIONS} initialQuestion={q} /></div>
       <aside className="space-y-4 xl:min-h-0 xl:overflow-y-auto xl:overscroll-contain xl:pr-1">
-        <WeeklyCard analysis={latest ?? null} metrics={metrics} defaultOpen={params.analisis === "1"} />
+        <WeeklyCard analysis={latest ?? null} metrics={metrics} handoff={handoff} defaultOpen={params.analisis === "1"} />
         <Link href="/resumen" className="block rounded-2xl bg-card p-5 text-sm hover:bg-secondary">
           <span className="font-mono text-[11px] uppercase text-muted-foreground">Panel completo</span>
           <span className="mt-1 block">Ver el resumen con todas las gráficas →</span>

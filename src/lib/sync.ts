@@ -1,4 +1,4 @@
-import { and, eq, lt } from "drizzle-orm";
+import { and, desc, eq, lt } from "drizzle-orm";
 import { getDb } from "@/db";
 import { leads, syncRuns } from "@/db/schema";
 import { addDays, todayIso, type DateRange } from "@/lib/dates";
@@ -87,4 +87,13 @@ export async function runSync(sourceId: string, range: DateRange, trigger: SyncT
     // Al cliente, mensaje genérico; el detalle queda en sync_runs y en los logs.
     return { source: sourceId, status: "error", rows: 0, range, error: "La fuente respondió con error" };
   }
+}
+
+/** ¿La fuente ya trajo datos bien hoy (zona horaria de la marca)? Para cuidar cuotas diarias. */
+export async function ranOkToday(sourceId: string): Promise<boolean> {
+  const db = await getDb();
+  const [last] = await db.select({ startedAt: syncRuns.startedAt }).from(syncRuns)
+    .where(and(eq(syncRuns.source, sourceId), eq(syncRuns.status, "ok")))
+    .orderBy(desc(syncRuns.startedAt)).limit(1);
+  return Boolean(last && todayIso(last.startedAt) === todayIso());
 }

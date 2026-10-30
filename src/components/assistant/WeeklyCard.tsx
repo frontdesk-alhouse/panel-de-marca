@@ -10,8 +10,10 @@ import { Segmented } from "@/components/dash/Segmented";
 import { TrendChart } from "@/components/dash/TrendChart";
 import { cn } from "@/lib/utils";
 import { Delta, fmt, MetricTile } from "./WeeklyMetrics";
+import { CopyForClaude } from "@/components/handoff/CopyForClaude";
+import type { HandoffPayload } from "@/lib/handoff/from-panel";
 
-interface Props { analysis: { periodo: string; creado: Date; analisis: Weekly } | null; metrics: WeeklyMetrics | null; defaultOpen?: boolean }
+interface Props { analysis: { periodo: string; creado: Date; analisis: Weekly } | null; metrics: WeeklyMetrics | null; handoff?: HandoffPayload | null; defaultOpen?: boolean }
 type Tab = "acciones" | "cambios" | "estado" | "aprendizajes" | "esperar";
 const IMPACT: Record<string, { dot: string; label: string }> = {
   alto: { dot: "bg-bad", label: "Impacto alto" }, medio: { dot: "bg-warn", label: "Impacto medio" }, bajo: { dot: "bg-muted-foreground/50", label: "Impacto bajo" },
@@ -76,7 +78,7 @@ function WeeklyDetail({ a, metrics }: { a: Weekly; metrics: WeeklyMetrics | null
 }
 
 /** El último análisis semanal en corto; al tocarlo se abre completo en un pop-up ancho. */
-export function WeeklyCard({ analysis, metrics, defaultOpen = false }: Props) {
+export function WeeklyCard({ analysis, metrics, handoff = null, defaultOpen = false }: Props) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [open, setOpen] = useState(defaultOpen);
@@ -130,6 +132,7 @@ export function WeeklyCard({ analysis, metrics, defaultOpen = false }: Props) {
                 <DialogTitle className="max-w-[60ch] font-display text-xl leading-snug md:text-2xl">{a.titular}</DialogTitle>
                 <DialogDescription className="sr-only">Métricas de la semana contra la anterior y recomendaciones del analista.</DialogDescription>
               </div>
+              {handoff && <CopyForClaude payload={handoff} className="mt-5" />}
               <WeeklyDetail a={a} metrics={metrics} />
             </DialogContent>
           </Dialog>

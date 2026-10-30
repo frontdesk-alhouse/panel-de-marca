@@ -4,6 +4,8 @@ import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { assistantSystem } from "@/lib/assistant/context";
 import { assistantTools } from "@/lib/assistant/tools";
+import { COPILOT_LABELS, copilotTools } from "@/lib/assistant/copilot";
+import { getViewer } from "@/auth";
 import { CHAT_MODELS } from "@/lib/assistant/weekly";
 import { todayIso } from "@/lib/dates";
 
@@ -16,11 +18,11 @@ const Body = z.object({
 });
 
 /** Etiqueta legible de lo que el asistente está consultando (se muestra mientras piensa). */
-const TOOL_LABEL: Record<string, string> = { leer_seccion: "Leyendo el panel", ultimo_analisis_semanal: "Revisando el análisis semanal", plan_de_medios: "Revisando el plan de medios" };
+const TOOL_LABEL: Record<string, string> = { leer_seccion: "Leyendo el panel", ultimo_analisis_semanal: "Revisando el análisis semanal", plan_de_medios: "Revisando el plan de medios", ...COPILOT_LABELS };
 
 /**
- * Chat del panel: Claude con herramientas de solo lectura sobre los datos.
- * Responde un stream NDJSON: {type:"text",text} · {type:"tool",label} · {type:"done"} · {type:"error",message}.
+ * Chat del panel: Claude con herramientas de lectura y un copiloto que propone cambios (se aplican solo con el botón «Aplicar»).
+ * Responde un stream NDJSON: {type:"text",text} · {type:"tool",label} · {type:"proposal",id,summary} · {type:"done"} · {type:"error",message}.
  */
 export async function POST(req: Request) {
   if (!(await isViewerRequest(req))) return Response.json({ error: "No autorizado" }, { status: 401 });
@@ -30,6 +32,7 @@ export async function POST(req: Request) {
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success || parsed.data.messages.at(-1)?.role !== "user") return Response.json({ error: "Conversación inválida" }, { status: 400 });
 
+  const viewer = (await getViewer())?.email ?? "desconocido";
   const client = new Anthropic();
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
@@ -44,8 +47,8 @@ export async function POST(req: Request) {
           output_config: { effort: "medium" },
           betas: ["server-side-fallback-2026-07-01"],
           fallbacks: "default",
-          tools: assistantTools(),
-          max_iterations: 8,
+          tools: [...assistantTools(), ...copilotTools({ viewer, onProposal: (p) => send({ type: "proposal", id: p.id, summary: p.summary }) })],
+          max_iterations: 10,
           messages: [
             ...parsed.data.messages,
             { role: "system", content: `Hoy es ${todayIso()} (zona horaria ${localeSettings().timeZone}).` },

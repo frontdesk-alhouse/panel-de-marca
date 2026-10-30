@@ -13,6 +13,7 @@ import { TrendChart } from "@/components/dash/TrendChart";
 import { Card } from "@/components/dash/Funnel";
 import { Notice } from "@/components/layout/Notice";
 import { MockNotice } from "@/components/layout/StateNotice";
+import { MissingConnections } from "@/components/setup/MissingConnections";
 
 export const dynamic = "force-dynamic";
 const ACTIVITY_ICON = { lead: UserPlus, crm: MessageSquare, web_lead: MousePointerClick, post: Camera, analysis: Sparkles } as const;
@@ -32,6 +33,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
     <div className="space-y-10">
       {d.score.hasMock && <MockNotice />}
       <SectionHeader title={TITLE} question={msg.pages["/resumen"].question(ws().brand.name)} path="/resumen" period={period} />
+      <MissingConnections />
 
       {d.leadsNotTracked && (
         <Notice>

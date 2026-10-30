@@ -1,22 +1,29 @@
 /** Estructura del panel: tres áreas; cada área agrupa sus secciones. */
 export interface NavItem { href: string; label: string }
-export interface NavArea { key: "inicio" | "resumen" | "negocio" | "estrategia" | "website" | "social" | "crm"; href: string; label: string; sections: NavItem[] }
+export interface NavArea { key: "inicio" | "resumen" | "negocio" | "estrategia" | "website" | "social" | "crm" | "skills"; href: string; label: string; sections: NavItem[] }
 
 export const AREAS: NavArea[] = [
   { key: "inicio", href: "/", label: "Inicio", sections: [] },
   { key: "resumen", href: "/resumen", label: "Resumen", sections: [] },
-  { key: "negocio", href: "/negocio", label: "Negocio", sections: [] },
+  {
+    // Negocio junta datos de varias fuentes (CRM, anuncios, sitio) para ver clientes e ingreso.
+    key: "negocio", href: "/negocio", label: "Negocio", sections: [
+      { href: "/negocio", label: "Métricas de negocio" },
+      { href: "/crm", label: "CRM" },
+    ],
+  },
   { key: "estrategia", href: "/estrategia", label: "Estrategia", sections: [] },
   {
-    key: "website", href: "/trafico", label: "Website", sections: [
+    key: "website", href: "/calificacion", label: "Website", sections: [
+      { href: "/calificacion", label: "Calificación" },
       { href: "/trafico", label: "Tráfico" },
       { href: "/seo", label: "SEO" },
+      { href: "/seo/ia", label: "Visibilidad en IA" },
       { href: "/ideas", label: "Ideas" },
       { href: "/anuncios", label: "Google Ads" },
       { href: "/comportamiento", label: "Comportamiento · Clarity" },
       { href: "/sitio", label: "Sitio" },
       { href: "/competencia", label: "Competencia" },
-      { href: "/calificacion", label: "Calificación" },
     ],
   },
   {
@@ -27,7 +34,7 @@ export const AREAS: NavArea[] = [
       { href: "/social/competencia", label: "Competencia" },
     ],
   },
-  { key: "crm", href: "/crm", label: "CRM", sections: [] },
+  { key: "skills", href: "/skills", label: "Skills", sections: [] },
 ];
 
 export function areaFor(pathname: string): NavArea {

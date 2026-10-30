@@ -16,6 +16,8 @@ const eslintConfig = defineConfig([
     "playwright-report/**",
     "test-results/**",
     "data/**",
+    // Skills para Claude: material que se descarga, con su propio estilo (snippets para pegar en sitios)
+    "skills/**",
   ]),
 ]);
 

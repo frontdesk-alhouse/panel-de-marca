@@ -227,3 +227,68 @@ export const competitors = pgTable("competitors", {
   sort: integer("sort").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+/**
+ * Bitácora de citación en asistentes de IA (medición manual del skill seo-geo): una fila
+ * por corrida de una consulta en un asistente. El índice es k/n con intervalo de Wilson.
+ */
+export const AI_ASSISTANTS = ["chatgpt", "gemini", "claude", "perplexity", "aio", "aimode", "copilot"] as const;
+
+export const aiCitations = pgTable("ai_citations", {
+  id: serial("id").primaryKey(),
+  date: date("date").notNull(),
+  assistant: text("assistant", { enum: AI_ASSISTANTS }).notNull(),
+  /** Id de la consulta en la batería (Q-01) o texto corto. */
+  queryId: text("query_id").notNull(),
+  query: text("query").notNull(),
+  run: integer("run").notNull().default(1),
+  /** ¿Buscó en la web para responder? */
+  searched: boolean("searched").notNull().default(false),
+  appears: boolean("appears").notNull(),
+  position: integer("position"),
+  citedUrls: jsonb("cited_urls").$type<string[]>().notNull().default([]),
+  /** Dato erróneo atribuido a la marca, si lo hubo. */
+  wrongFact: text("wrong_fact"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  // Una corrida por consulta, asistente, número y fecha: reimportar no duplica.
+  uniqueIndex("ai_citations_uq").on(t.queryId, t.assistant, t.run, t.date),
+  index("ai_citations_date").on(t.date),
+]);
+
+/**
+ * Bitácora de cambios: lo que hizo la marca (propio) o lo que cambió afuera (externo:
+ * actualización de Google, campaña de un competidor). Se marca en la gráfica de la calificación.
+ */
+export const CHANGE_KINDS = ["propio", "externo"] as const;
+export const CHANGE_AREAS = ["general", "visibilidad", "conversion", "inversion", "pipeline", "adquisicion", "marca", "experiencia"] as const;
+
+export const changes = pgTable("changes", {
+  id: serial("id").primaryKey(),
+  date: date("date").notNull(),
+  kind: text("kind", { enum: CHANGE_KINDS }).notNull().default("propio"),
+  area: text("area", { enum: CHANGE_AREAS }).notNull().default("general"),
+  title: text("title").notNull(),
+  detail: text("detail"),
+  url: text("url"),
+  /** Quién lo registró: el correo de la sesión, «chat» si vino del copiloto. */
+  createdBy: text("created_by"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [index("changes_date").on(t.date)]);
+
+/**
+ * Cambios que propone el copiloto del chat. El modelo solo puede crear la propuesta;
+ * se aplica únicamente cuando la persona toca «Aplicar» (POST /api/copilot/apply).
+ */
+export const copilotActions = pgTable("copilot_actions", {
+  id: serial("id").primaryKey(),
+  tool: text("tool").notNull(),
+  args: jsonb("args").notNull(),
+  summary: text("summary").notNull(),
+  status: text("status", { enum: ["pending", "applied", "discarded", "error"] }).notNull().default("pending"),
+  viewer: text("viewer").notNull(),
+  result: text("result"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  decidedAt: timestamp("decided_at", { withTimezone: true }),
+}, (t) => [index("copilot_actions_status").on(t.status, t.createdAt)]);

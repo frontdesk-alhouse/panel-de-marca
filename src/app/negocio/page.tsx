@@ -6,6 +6,7 @@ import type { BizMetric, BizStatus } from "@/lib/crm/business";
 import type { GlossaryKey } from "@/lib/analytics/glossary";
 import { formatMoney, formatNumber, formatPct } from "@/lib/format";
 import { SectionHeader } from "@/components/dash/SectionHeader";
+import { DataSources } from "@/components/dash/DataSources";
 import { MetricTip } from "@/components/dash/MetricTip";
 import { cn } from "@/lib/utils";
 
@@ -55,6 +56,7 @@ export default async function NegocioPage() {
   return (
     <div className="space-y-10">
       <SectionHeader title={TITLE} question={msg.pages["/negocio"].question} path="/negocio" />
+      <DataSources intro="Junta datos de varias fuentes: los clientes y el ingreso salen del CRM; la inversión, de Google Ads y Meta Ads; las visitas y los contactos, de Google Analytics." items={[{ label: "CRM del panel", on: true }, "gads", "meta", "ga4"]} />
 
       {b.totalLeads < 10 && (
         <p className="max-w-[70ch] rounded-xl bg-card px-4 py-3 text-sm">

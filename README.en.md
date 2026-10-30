@@ -41,16 +41,35 @@ Everything is connected from the panel (**Settings → Connections**), with each
 
 | Connection | Turns on | Cost |
 |---|---|---|
-| Nothing | CRM, Business, Content ideas (Google autocomplete and competitors' blogs) | Free |
+| Nothing | CRM, Business, Content ideas (Google autocomplete and competitors' blogs), AI visibility (technical check) | Free |
 | [PageSpeed Insights](https://console.cloud.google.com/apis/library/pagespeedonline.googleapis.com) | Site speed and comparison with competitors | Free |
 | [Microsoft Clarity](https://clarity.microsoft.com/projects) | Behavior: rage clicks, scroll, quick backs | Free |
 | [Google Analytics and Search Console](https://console.cloud.google.com/auth/clients/create) | Traffic, conversions and SEO | Free |
 | [Meta](https://business.facebook.com/settings/system-users) | Organic Instagram and Meta Ads | Free |
 | [Google Ads](https://ads.google.com/aw/apicenter) (advanced) | Campaigns, search terms and cost per lead | Free (Google approves a token) |
 | [Apify](https://console.apify.com/sign-up) | Google rankings, Google Maps, backlinks and competitors' Instagram, Reddit | Free up to US$5 credit a month; the panel uses ~US$3–5 |
-| [Claude (Anthropic)](https://console.anthropic.com/settings/keys) | Chat with your data, weekly analysis, media plan and the brand draft | Pay as you go: cents per analysis, ~US$1 per media plan |
+| [Claude (Anthropic)](https://platform.claude.com/settings/keys) | Chat with your data, weekly analysis, media plan and the brand draft | Pay as you go: cents per analysis, ~US$1 per media plan |
 
 For Google you use **your own** Google Cloud project with a «Desktop app» OAuth client; the panel walks you through it. Google will show «Google hasn't verified this app»: that's expected, the app is yours.
+
+## Working with Claude
+
+The panel doesn't just tell you what's wrong: it lets you get it done with Claude.
+
+- **Copy for Claude.** Score, SEO, AI visibility, Strategy and the weekly analysis have a button that copies what to do, with numbers, priorities and the skill to use. Pick **Claude Code** (works on the site's code, runs scripts and verifies) or **Claude app** (guides you step by step). You don't need the Claude API for this.
+- **Skills for Claude** (**Skills** menu). A ready method so Claude does the work well instead of guessing:
+
+  | Skill | Improves | Repo |
+  |---|---|---|
+  | `seo-geo` | Organic and AI-assistant visibility | [seo-geo-skill](https://github.com/frontdesk-alhouse/seo-geo-skill) |
+  | `anuncios-eficiencia` | Google Ads and Meta Ads spend efficiency | in this repo: [`skills/`](skills/) |
+  | `conversion-medicion` | Conversion, lead tracking and Core Web Vitals | in this repo: [`skills/`](skills/) |
+
+  In Claude Code: `git clone` or unzip into `~/.claude/skills/`. In the Claude app: Settings → Capabilities → Skills → upload the zip. (The skills are written in Spanish.)
+- **Chat copilot** (with the Claude API connected). Besides answering with your data, it changes the panel when you ask: "add this competitor", "log that we changed the form today", "sync Google Analytics". It always shows what it will do and waits for your "yes".
+- **Change log.** Log what you did (or what changed outside, like a Google update) and it shows on the score chart. After 28 days the panel tells you how much it moved, without mistaking coincidence for cause.
+- **AI visibility.** A free daily check of whether ChatGPT, Claude, Perplexity and Google can read your site, plus a log of how often they mention you (`seo-geo` skill method).
+- **Sync now.** Top-right button to pull everything right away instead of waiting for the schedule.
 
 ## Your data and keys
 

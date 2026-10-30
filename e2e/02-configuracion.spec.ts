@@ -1,5 +1,11 @@
 import { expect, test } from "@playwright/test";
 
+test.beforeEach(async ({ page }) => {
+  // La guía de bienvenida ya se vio (si no, el diálogo tapa la página).
+  await page.addInitScript(() => localStorage.setItem("ah-panel-onboarding-v1", "1"));
+});
+
+
 /**
  * La configuración inicial completa, como la haría una agencia nueva, sin ninguna llave.
  * Usa example.com / example.org (dominios reservados por IANA para pruebas: no cambian).

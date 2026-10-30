@@ -4,12 +4,28 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { Check, ExternalLink, Plug } from "lucide-react";
 import { saveIntegrationAction, testIntegrationAction } from "@/app/setup/actions";
 import { INTEGRATIONS, type Integration } from "@/lib/integrations/catalog";
+import { VISUAL_GUIDES } from "@/lib/integrations/visual-guides";
+import { ScreenMock } from "./ScreenMock";
+import { Recommended } from "./Recommended";
 import { useT } from "@/i18n/client";
 import type { IntegrationState } from "@/lib/integrations/status";
 import type { Choice, TestResult } from "@/lib/integrations/test";
 import { control } from "@/components/crm/fields";
 import { cn } from "@/lib/utils";
 import { Alert, Button, StepHeader, guarded } from "./ui";
+
+const GOOGLE_CLIENT_FIELDS: ReadonlySet<string> = new Set(["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"]);
+
+/** Envuelve en un desplegable solo cuando hace falta (Google: los pasos de la app propia). */
+function Wrap({ isOn, summary, children }: { isOn: boolean; summary: string; children: React.ReactNode }) {
+  if (!isOn) return <>{children}</>;
+  return (
+    <details className="rounded-lg bg-background/40 px-3 py-2">
+      <summary className="cursor-pointer text-xs text-muted-foreground hover:text-foreground">{summary}</summary>
+      <div className="pt-3">{children}</div>
+    </details>
+  );
+}
 
 /** Paso 5: conexiones. Ninguna es obligatoria: lo que no se conecta queda como «Conectar» en su sección. */
 export function ConnectionsStep({ states: initial, onStates, googleResult, back, onNext, onBack, header = true }: {
@@ -31,6 +47,7 @@ export function ConnectionsStep({ states: initial, onStates, googleResult, back,
         <StepHeader eyebrow={c.eyebrow} title={c.title}><p>{c.intro}</p></StepHeader>
       )}
       <p className="font-mono text-[11px] uppercase text-muted-foreground" role="status">{c.count(connected, INTEGRATIONS.length)}</p>
+      <Recommended states={states} />
       <div className="space-y-4">
         {main.map((it) => <IntegrationCard key={it.id} it={it} state={states.find((s) => s.id === it.id)!} back={back} googleClientSet={googleClientSet} googleResult={it.id === "google" ? googleResult : null} onStates={setStates} />)}
       </div>
@@ -87,14 +104,22 @@ function IntegrationCard({ it, state, back, googleClientSet, googleResult, onSta
   // Llegando desde «Conectar» de una sección (/ajustes#clarity): abrir esta tarjeta.
   const ref = useRef<HTMLElement>(null);
   useEffect(() => {
-    if (window.location.hash !== `#${it.id}`) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- depende del hash, que solo existe en el navegador
-    setOpen(true);
-    const details = ref.current?.closest("details");
-    if (details) details.open = true;
-    ref.current?.scrollIntoView({ block: "start" });
+    const openIfTarget = () => {
+      if (window.location.hash !== `#${it.id}`) return;
+      setOpen(true);
+      const details = ref.current?.closest("details");
+      if (details) details.open = true;
+      ref.current?.scrollIntoView({ block: "start" });
+    };
+    openIfTarget();
+    // También al tocar una fila de «Completa tu panel» (cambia el hash sin recargar).
+    window.addEventListener("hashchange", openIfTarget);
+    return () => window.removeEventListener("hashchange", openIfTarget);
   }, [it.id]);
   const needsGoogleAuth = it.id === "google" || it.id === "gads";
+  const isGoogle = it.id === "google";
+  // Google ya no necesita un cliente propio: el panel trae la app «Alto Dashboard». Ads sí pide Google antes.
+  const canAuth = isGoogle || googleClientSet;
 
   return (
     <section ref={ref} id={it.id} aria-labelledby={`${it.id}-name`} className={cn("scroll-mt-24 rounded-2xl p-5 transition-colors md:p-6", state.connected ? "bg-card/60" : "bg-card")}>
@@ -117,21 +142,51 @@ function IntegrationCard({ it, state, back, googleClientSet, googleResult, onSta
 
       {open && (
         <div id={`${it.id}-body`} className="mt-6 grid gap-8 lg:grid-cols-[1.1fr_1fr]">
+          <div className="space-y-4">
+          {isGoogle && (
+            <ol className="space-y-3 text-sm">
+              {c.oneClick.steps.map((x, i) => (
+                <li key={x} className="flex gap-3">
+                  <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-primary font-mono text-[11px] text-primary-foreground" aria-hidden>{i + 1}</span>
+                  <span className="leading-6">{x}</span>
+                </li>
+              ))}
+              <li className="rounded-lg bg-background/70 px-3 py-2 text-xs text-muted-foreground">{c.oneClick.note}</li>
+            </ol>
+          )}
+          <Wrap isOn={isGoogle} summary={c.oneClick.advanced}>
           <ol className="space-y-3 text-sm">
             {it.steps.map((s, i) => (
               <li key={i} className="flex gap-3">
                 <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-background font-mono text-[11px]" aria-hidden>{i + 1}</span>
-                <span className="leading-6">
-                  {text.steps[i]}{" "}
-                  {s.url && <a href={s.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 whitespace-nowrap underline underline-offset-2">{t.common.open}<ExternalLink className="h-3 w-3" aria-hidden /><span className="sr-only"> {t.common.newTab}</span></a>}
+                <span className="min-w-0 flex-1 space-y-2 leading-6">
+                  <span className="block">
+                    {text.steps[i]}{" "}
+                    {s.url && <a href={s.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 whitespace-nowrap underline underline-offset-2">{t.common.open}<ExternalLink className="h-3 w-3" aria-hidden /><span className="sr-only"> {t.common.newTab}</span></a>}
+                  </span>
+                  {VISUAL_GUIDES[it.id]?.[i] && (
+                    <details open className="group/mock">
+                      <summary className="cursor-pointer text-xs text-muted-foreground hover:text-foreground">{c.whereToClick}</summary>
+                      <div className="pt-2"><ScreenMock s={VISUAL_GUIDES[it.id]![i]!} /></div>
+                    </details>
+                  )}
                 </span>
               </li>
             ))}
             {text.notes.map((n) => <li key={n} className="rounded-lg bg-background/70 px-3 py-2 text-xs text-muted-foreground">{n}</li>)}
+            {it.id === "clarity" && (
+              <li className="space-y-2 rounded-lg bg-background/70 px-3 py-3">
+                <p className="font-medium">{t.integrations.clarity.install.title}</p>
+                <ul className="list-disc space-y-1 pl-5 text-xs">{t.integrations.clarity.install.items.map((x) => <li key={x}>{x}</li>)}</ul>
+                <p className="text-xs text-muted-foreground">{t.integrations.clarity.install.note}</p>
+              </li>
+            )}
           </ol>
+          </Wrap>
+          </div>
 
           <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); save(); }}>
-            {it.fields.map((f) => {
+            {it.fields.filter((f) => !(isGoogle && GOOGLE_CLIENT_FIELDS.has(f.key))).map((f) => {
               const list: Choice[] | undefined = choices?.[f.key as "GA4_PROPERTY_ID" | "GSC_SITE_URL"];
               const id = `${it.id}-${f.key}`;
               return (
@@ -153,18 +208,39 @@ function IntegrationCard({ it, state, back, googleClientSet, googleResult, onSta
                 </div>
               );
             })}
+            {isGoogle && (
+              <details className="rounded-lg bg-background/60 px-3 py-2 text-sm">
+                <summary className="cursor-pointer text-xs text-muted-foreground hover:text-foreground">{c.oneClick.ownClient}</summary>
+                <div className="space-y-4 pt-3">
+                  {it.fields.filter((f) => GOOGLE_CLIENT_FIELDS.has(f.key)).map((f) => {
+                    const id = `${it.id}-${f.key}`;
+                    return (
+                      <div key={f.key} className="space-y-1.5">
+                        <label htmlFor={id} className="block font-mono text-[11px] uppercase text-muted-foreground">
+                          {(text.fields as Record<string, string>)[f.key]}
+                          {f.secret && fieldSet(f.key) && <span className="ml-2 normal-case text-good-ink">{c.savedKey}</span>}
+                        </label>
+                        <input id={id} type={f.secret ? "password" : "text"} autoComplete="off" spellCheck={false} value={values[f.key] ?? ""}
+                          placeholder={f.secret && fieldSet(f.key) ? c.keepKey : f.placeholder}
+                          onChange={(e) => setValues({ ...values, [f.key]: e.target.value })} className={cn(control, "h-10 font-mono text-[13px]")} />
+                      </div>
+                    );
+                  })}
+                </div>
+              </details>
+            )}
             <div className="flex flex-wrap items-center gap-2">
               <Button type="submit" pending={saving}>{c.saveTest}</Button>
               {state.connected && <Button variant="ghost" onClick={test} pending={testing}>{c.test}</Button>}
               {needsGoogleAuth && (
-                <a href={googleClientSet ? `/api/setup/google/start?back=${back}${it.id === "gads" ? "&ads=1" : ""}` : undefined}
-                  aria-disabled={!googleClientSet}
-                  className={cn("inline-flex h-10 items-center rounded-lg border border-border bg-background px-4 text-sm hover:bg-card", !googleClientSet && "pointer-events-none opacity-55")}>
+                <a href={canAuth ? `/api/setup/google/start?back=${back}${it.id === "gads" ? "&ads=1" : ""}` : undefined}
+                  aria-disabled={!canAuth}
+                  className={cn("inline-flex h-10 items-center rounded-lg px-4 text-sm", isGoogle && !state.authorized ? "bg-primary text-primary-foreground hover:opacity-90" : "border border-border bg-background hover:bg-card", !canAuth && "pointer-events-none opacity-55")}>
                   {it.id === "google" && state.authorized ? c.googleReconnect : c.googleConnect}
                 </a>
               )}
             </div>
-            {needsGoogleAuth && !googleClientSet && <p className="text-xs text-muted-foreground">{it.id === "google" ? c.googleNeedsClient : c.googleFirst}</p>}
+            {needsGoogleAuth && !canAuth && <p className="text-xs text-muted-foreground">{c.googleFirst}</p>}
             {error && <Alert>{error}</Alert>}
             {result && <Alert tone={result.ok ? "good" : "bad"}>{result.message}</Alert>}
           </form>

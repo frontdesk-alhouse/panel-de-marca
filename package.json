@@ -1,6 +1,6 @@
 {
   "name": "panel-de-marca",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "scripts": {
     "dev": "next dev -H 127.0.0.1",
@@ -11,7 +11,7 @@
     "db:push": "drizzle-kit push",
     "sync": "tsx --env-file=.env.local scripts/sync.ts",
     "smoke": "tsx --env-file=.env.local scripts/smoke.ts",
-    "test": "tsx --test src/lib/scorecard/score.test.ts src/lib/scorecard/inputs.test.ts src/lib/dates.test.ts src/sources/psi.test.ts src/sources/ga4.test.ts src/lib/analytics/refs.test.ts src/lib/ideas/intent.test.ts src/lib/analytics/compscore.test.ts src/sources/serp.test.ts src/lib/analytics/seofactors.test.ts src/sources/factors-sources.test.ts src/lib/crm/transitions.test.ts src/lib/crm/business.test.ts src/lib/crm/meeting-schema.test.ts src/lib/analytics/adsadvice.test.ts src/sources/clarity.test.ts src/sources/meta-ig.test.ts src/lib/workspace/store.test.ts src/lib/workspace/owner-equality.test.ts src/lib/local/guard.test.ts src/lib/local/schedule.test.ts src/lib/secrets/env-file.test.ts src/lib/workspace/patterns.test.ts src/lib/briefing/extract.test.ts src/lib/briefing/suggest.test.ts src/lib/briefing/brand-form.test.ts src/i18n/i18n.test.ts",
+    "test": "tsx --test src/lib/scorecard/score.test.ts src/lib/scorecard/inputs.test.ts src/lib/dates.test.ts src/sources/psi.test.ts src/sources/ga4.test.ts src/lib/analytics/refs.test.ts src/lib/ideas/intent.test.ts src/lib/analytics/compscore.test.ts src/sources/serp.test.ts src/lib/analytics/seofactors.test.ts src/sources/factors-sources.test.ts src/lib/crm/transitions.test.ts src/lib/crm/business.test.ts src/lib/crm/meeting-schema.test.ts src/lib/analytics/adsadvice.test.ts src/sources/clarity.test.ts src/sources/meta-ig.test.ts src/lib/workspace/store.test.ts src/lib/workspace/owner-equality.test.ts src/lib/local/guard.test.ts src/lib/local/schedule.test.ts src/lib/secrets/env-file.test.ts src/lib/workspace/patterns.test.ts src/lib/briefing/extract.test.ts src/lib/briefing/suggest.test.ts src/lib/briefing/brand-form.test.ts src/i18n/i18n.test.ts src/lib/sync-plan.test.ts src/lib/skills/catalog.test.ts src/lib/skills/zip.test.ts src/lib/handoff/build.test.ts src/lib/geo/geo.test.ts src/lib/geo/runs.test.ts src/lib/changes/impact.test.ts src/lib/changes/paste.test.ts src/lib/integrations/shared-google-app.test.ts src/lib/updates/version.test.ts",
     "auth:google": "tsx --env-file-if-exists=.env.local scripts/auth-google.ts",
     "db:generate": "drizzle-kit generate",
     "start:local": "APP_MODE=local next start -H 127.0.0.1 -p 3000",
@@ -28,6 +28,7 @@
     "clsx": "^2.1.1",
     "date-fns": "^4.4.0",
     "drizzle-orm": "^0.45.4",
+    "fflate": "^0.8.2",
     "googleapis": "^148.0.0",
     "lucide-react": "^1.61.0",
     "next": "^16.2.2",

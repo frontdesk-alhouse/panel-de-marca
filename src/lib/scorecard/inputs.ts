@@ -207,8 +207,16 @@ function experience(w: RawWindows, out: Inputs) {
 }
 
 /** Convierte agregados crudos + leads en el valor de cada métrica del marco. */
-export function buildInputs(windows: RawWindows, pipelineLeads: LeadLite[]): Inputs {
+/** Lo que no sale de metric_daily: la bitácora de citación y el último chequeo GEO. */
+export interface ExtraInputs {
+  geo?: { ok: number; total: number } | null;
+  citations?: { k: number; n: number } | null;
+}
+
+export function buildInputs(windows: RawWindows, pipelineLeads: LeadLite[], extras: ExtraInputs = {}): Inputs {
   const out: Inputs = {};
+  out.geo_tecnico = input(extras.geo && extras.geo.total > 0 ? extras.geo.ok / extras.geo.total : null);
+  out.citacion_ia = input(extras.citations && extras.citations.n > 0 ? extras.citations.k / extras.citations.n : null, extras.citations?.n ?? 0);
   visibility(windows, out);
   conversion(windows, out);
   investment(windows, pipelineLeads, out);

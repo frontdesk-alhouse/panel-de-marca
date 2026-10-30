@@ -2,8 +2,11 @@ import { getMessages } from "@/i18n/server";
 import { ws } from "@/lib/workspace/store";
 import { pageGate, LoadError } from "@/lib/page-gate";
 import { latestStrategy } from "@/lib/assistant/strategy";
+import { CopyForClaude } from "@/components/handoff/CopyForClaude";
+import { handoffFromStrategy } from "@/lib/handoff/from-panel";
 import { formatMoney } from "@/lib/format";
 import { SectionHeader } from "@/components/dash/SectionHeader";
+import { DataSources } from "@/components/dash/DataSources";
 import { Card } from "@/components/dash/Funnel";
 import { DataTable } from "@/components/dash/DataTable";
 import { StrategyForm } from "@/components/assistant/StrategyForm";
@@ -24,11 +27,13 @@ export default async function EstrategiaPage() {
   let latest;
   try { latest = await latestStrategy(); } catch (e) { console.error("[estrategia]", e); return <LoadError title={TITLE} />; }
   const s = latest?.strategy;
+  const handoff = s ? await handoffFromStrategy(s, latest!.creado) : null;
   const total = s ? s.presupuesto.totalMensualMxn || s.presupuesto.reparto.reduce((t, r) => t + r.mxn, 0) : 0;
 
   return (
     <div className="space-y-10">
       <SectionHeader title={TITLE} question={msg.pages["/estrategia"].question(ws().brand.name)} path="/estrategia" />
+      <DataSources intro="Claude arma esta estrategia leyendo todo el panel: tráfico, SEO, anuncios, redes, competencia, CRM y la calificación, más el contexto de la marca. Entre más fuentes conectadas, mejor la propuesta." items={["ga4", "gsc", "gads", "meta", "instagram", "clarity", "comp", "serp", { label: "CRM del panel", on: true }, { label: "Contexto de la marca", on: true }]} />
       <StrategyForm hasStrategy={Boolean(s)} />
       {!s ? <p className="text-sm text-muted-foreground">Todavía no hay estrategia. Genera la primera: tarda 2-3 minutos.</p> : (
         <>
@@ -38,6 +43,7 @@ export default async function EstrategiaPage() {
               <h2 id="apuesta-h" className="max-w-[24ch] font-display text-3xl leading-[1.05] tracking-[-0.02em] md:text-5xl">{s.titular}</h2>
               <p className="max-w-[65ch] text-muted-foreground">{s.objetivo90Dias}</p>
             </div>
+            {handoff && <CopyForClaude payload={handoff} className="max-w-xl" />}
             <dl className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(min(100%,170px),1fr))]">
               <div className="rounded-2xl bg-card p-4">
                 <dt className="font-mono text-[11px] uppercase text-muted-foreground">Inversión al mes</dt>

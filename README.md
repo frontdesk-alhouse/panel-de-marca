@@ -41,16 +41,35 @@ Todo se conecta desde el panel (**Ajustes → Conexiones**), con los pasos y lin
 
 | Conexión | Enciende | Costo |
 |---|---|---|
-| Nada | CRM, Negocio, Ideas de contenido (autocompletado de Google y blogs de la competencia) | Gratis |
+| Nada | CRM, Negocio, Ideas de contenido (autocompletado de Google y blogs de la competencia), Visibilidad en IA (chequeo técnico) | Gratis |
 | [PageSpeed Insights](https://console.cloud.google.com/apis/library/pagespeedonline.googleapis.com) | Velocidad del sitio y comparación con la competencia | Gratis |
 | [Microsoft Clarity](https://clarity.microsoft.com/projects) | Comportamiento: clics de enojo, scroll, regresos rápidos | Gratis |
 | [Google Analytics y Search Console](https://console.cloud.google.com/auth/clients/create) | Tráfico, conversiones y SEO | Gratis |
 | [Meta](https://business.facebook.com/settings/system-users) | Instagram orgánico y Meta Ads | Gratis |
 | [Google Ads](https://ads.google.com/aw/apicenter) (avanzado) | Campañas, términos y costo por lead | Gratis (Google aprueba un token) |
 | [Apify](https://console.apify.com/sign-up) | Posiciones en Google, Google Maps, backlinks e Instagram de la competencia, Reddit | Gratis hasta US$5 de crédito al mes; el panel usa ~US$3-5 |
-| [Claude (Anthropic)](https://console.anthropic.com/settings/keys) | Chat con tus datos, análisis semanal, plan de medios y el borrador de tu marca | Pago por uso: centavos por análisis, ~US$1 por plan de medios |
+| [Claude (Anthropic)](https://platform.claude.com/settings/keys) | Chat con tus datos, análisis semanal, plan de medios y el borrador de tu marca | Pago por uso: centavos por análisis, ~US$1 por plan de medios |
 
 Para Google usas **tu propio** proyecto de Google Cloud con un cliente OAuth de tipo «App de escritorio»; el panel te lleva paso a paso. Google mostrará «Google no verificó esta app»: es normal, la app es tuya.
+
+## Trabajar con Claude
+
+El panel no solo dice qué está mal: te deja ejecutarlo con Claude.
+
+- **Copiar para Claude.** En Calificación, SEO, Visibilidad en IA, Estrategia y el análisis semanal hay un botón que copia lo que hay que hacer, con cifras, prioridades y el skill a usar. Elige **Claude Code** (trabaja sobre el código del sitio, corre scripts y verifica) o **App de Claude** (te guía paso a paso). No necesitas conectar la API de Claude para esto.
+- **Skills para Claude** (menú **Skills**). Método listo para que Claude haga bien el trabajo, no a ciegas:
+
+  | Skill | Mejora | Repo |
+  |---|---|---|
+  | `seo-geo` | Visibilidad orgánica y en asistentes de IA | [seo-geo-skill](https://github.com/frontdesk-alhouse/seo-geo-skill) |
+  | `anuncios-eficiencia` | Eficiencia de inversión en Google Ads y Meta Ads | en este repo: [`skills/`](skills/) |
+  | `conversion-medicion` | Conversión, medición de leads y Core Web Vitals | en este repo: [`skills/`](skills/) |
+
+  En Claude Code: `git clone` o descomprime el zip en `~/.claude/skills/`. En la app de Claude: Ajustes → Capacidades → Skills → sube el zip.
+- **Copiloto en el chat** (con la API de Claude conectada). Además de responder con tus datos, cambia el panel cuando se lo pides: «agrega a este competidor», «registra que hoy cambiamos el formulario», «sincroniza Google Analytics». Siempre te muestra lo que va a hacer y espera tu «sí».
+- **Bitácora de cambios.** Registra lo que hiciste (o lo que cambió afuera, como una actualización de Google) y aparece sobre la gráfica de la calificación. Después de 28 días el panel te dice cuánto se movió, sin confundir coincidencia con causa.
+- **Visibilidad en IA.** Revisión diaria y gratis de si ChatGPT, Claude, Perplexity y Google pueden leer tu sitio, más una bitácora de cuántas veces te mencionan (método del skill `seo-geo`).
+- **Sincronizar ahora.** Botón arriba a la derecha para traer todo al momento sin esperar al calendario.
 
 ## Tus datos y tus llaves
 

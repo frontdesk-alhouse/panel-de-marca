@@ -2,11 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowUp, RotateCcw } from "lucide-react";
+import { ArrowUp, Check, RotateCcw, X } from "lucide-react";
 import { Markdown } from "./Markdown";
 import { cn } from "@/lib/utils";
 
-interface Msg { role: "user" | "assistant"; content: string }
+type ProposalStatus = "pending" | "applying" | "applied" | "discarded" | "error";
+interface Proposal { id: number; summary: string; status: ProposalStatus; result?: string }
+interface Msg { role: "user" | "assistant"; content: string; proposals?: Proposal[] }
 const STORAGE_KEY = "ah-panel-chat";
 const MODEL_KEY = "ah-panel-chat-model";
 const MODELS = [{ key: "sonnet", label: "Sonnet 5.5", hint: "Rápido" }, { key: "opus", label: "Opus 5.5", hint: "Más profundo" }] as const;
@@ -56,8 +58,9 @@ export function Chat({ suggestions, initialQuestion }: { suggestions: string[]; 
     setBusy(true);
     setStatus("Pensando");
     const append = (text: string) => setMessages((m) => [...m.slice(0, -1), { role: "assistant", content: m.at(-1)!.content + text }]);
+    const addProposal = (p: Proposal) => setMessages((m) => [...m.slice(0, -1), { ...m.at(-1)!, proposals: [...(m.at(-1)!.proposals ?? []), p] }]);
     try {
-      const res = await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model, messages: history.slice(-40) }) });
+      const res = await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model, messages: history.slice(-40).map(({ role, content }) => ({ role, content })) }) });
       if (!res.ok || !res.body) {
         const err = (await res.json().catch(() => ({}))) as { error?: string };
         append(err.error === "Falta ANTHROPIC_API_KEY" ? "El chat aún no está conectado: falta la API key de Anthropic." : "No se pudo conectar con el asistente.");
@@ -74,10 +77,12 @@ export function Chat({ suggestions, initialQuestion }: { suggestions: string[]; 
         buffer = lines.pop() ?? "";
         for (const line of lines) {
           if (!line) continue;
-          const ev = JSON.parse(line) as { type: string; text?: string; label?: string; message?: string };
+          const ev = JSON.parse(line) as { type: string; text?: string; label?: string; message?: string; id?: number; summary?: string };
           if (ev.type === "text" && ev.text) { setStatus(null); append(ev.text); }
           else if (ev.type === "tool") setStatus(ev.label ?? "Consultando datos");
           else if (ev.type === "error") append(`\n\n_${ev.message}_`);
+          // El copiloto propone un cambio: se muestra con «Aplicar» (nunca se aplica solo).
+          else if (ev.type === "proposal" && ev.id && ev.summary) addProposal({ id: ev.id, summary: ev.summary, status: "pending" });
         }
       }
     } catch {
@@ -85,6 +90,21 @@ export function Chat({ suggestions, initialQuestion }: { suggestions: string[]; 
     } finally {
       setBusy(false);
       setStatus(null);
+    }
+  }
+
+  /** «Aplicar» / «Descartar»: la única forma de que el copiloto cambie el panel. */
+  async function decide(msgIndex: number, id: number, decision: "apply" | "discard") {
+    const update = (patch: Partial<Proposal>) => setMessages((ms) => ms.map((m, i) => (i !== msgIndex ? m : { ...m, proposals: m.proposals?.map((p) => (p.id === id ? { ...p, ...patch } : p)) })));
+    update({ status: "applying" });
+    try {
+      const res = await fetch("/api/copilot/apply", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, decision }) });
+      const body = (await res.json().catch(() => ({}))) as { result?: string; error?: string };
+      if (!res.ok) return update({ status: "error", result: body.error ?? "No se pudo aplicar." });
+      update({ status: decision === "apply" ? "applied" : "discarded", result: body.result });
+      if (decision === "apply") router.refresh();
+    } catch {
+      update({ status: "error", result: "Se cortó la conexión." });
     }
   }
 
@@ -123,7 +143,33 @@ export function Chat({ suggestions, initialQuestion }: { suggestions: string[]; 
           <div key={i} className={cn("flex", m.role === "user" ? "justify-end" : "justify-start")}>
             {m.role === "user"
               ? <p className="max-w-[80%] rounded-2xl rounded-br-md bg-primary px-4 py-2.5 text-[15px] text-primary-foreground">{m.content}</p>
-              : <div className="max-w-[92%]">{m.content ? <Markdown text={m.content} /> : null}</div>}
+              : (
+                <div className="max-w-[92%] space-y-3">
+                  {m.content ? <Markdown text={m.content} /> : null}
+                  {m.proposals?.map((p) => (
+                    <div key={p.id} className="space-y-2 rounded-xl border border-border bg-background p-3 text-sm">
+                      <p className="font-mono text-[10px] uppercase text-muted-foreground">Propuesta de cambio</p>
+                      <p>{p.summary}</p>
+                      {p.status === "pending" || p.status === "applying" ? (
+                        <div className="flex gap-2">
+                          <button type="button" disabled={p.status === "applying"} onClick={() => decide(i, p.id, "apply")}
+                            className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-primary px-3 text-xs text-primary-foreground hover:opacity-90 disabled:opacity-50">
+                            <Check className="h-3.5 w-3.5" aria-hidden />{p.status === "applying" ? "Aplicando…" : "Aplicar"}
+                          </button>
+                          <button type="button" disabled={p.status === "applying"} onClick={() => decide(i, p.id, "discard")}
+                            className="inline-flex h-8 items-center gap-1.5 rounded-lg px-3 text-xs text-muted-foreground hover:bg-card hover:text-foreground disabled:opacity-50">
+                            <X className="h-3.5 w-3.5" aria-hidden />Descartar
+                          </button>
+                        </div>
+                      ) : (
+                        <p role="status" className={cn("text-xs", p.status === "applied" ? "text-good-ink" : p.status === "error" ? "text-bad-ink" : "text-muted-foreground")}>
+                          {p.status === "applied" ? "✓ Aplicado. " : p.status === "discarded" ? "Descartado. " : ""}{p.result}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
           </div>
         ))}
         {status && <p className="animate-pulse font-mono text-[11px] uppercase text-muted-foreground">{status}…</p>}

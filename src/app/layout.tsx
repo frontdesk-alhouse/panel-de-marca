@@ -17,6 +17,7 @@ import { messages } from "@/i18n";
 import { AppShell } from "@/components/layout/AppShell";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import { Toaster } from "@/components/ui/sonner";
+import { frameBootScript } from "@/lib/appearance/presets";
 
 // Titulares y texto: los de la marca si existen, si no los abiertos (ver next.config.ts).
 const fragmentMono = Fragment_Mono({ variable: "--font-fragment-mono", weight: "400", subsets: ["latin"], display: "swap" });
@@ -56,6 +57,10 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   const shown = viewer && local && workspace?.brand.owner ? { ...viewer, name: workspace.brand.owner } : viewer;
   return (
     <html lang={lang} className={`${displayFont.variable} ${bodyFont.variable} ${fragmentMono.variable} antialiased`} suppressHydrationWarning>
+      <head>
+        {/* Fondo elegido en este navegador antes de pintar (texto fijo generado de los presets). */}
+        <script dangerouslySetInnerHTML={{ __html: frameBootScript("ah-panel-frame") }} />
+      </head>
       <body className="shader-frame min-h-dvh p-2 md:p-3" suppressHydrationWarning>
         <ThemeProvider>
           <I18nProvider lang={lang}>

@@ -1,6 +1,7 @@
 "use client";
 
-import { Area, AreaChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { useId } from "react";
+import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { formatNumber, formatShortDate } from "@/lib/format";
 import { label as channelLabel, seriesColor } from "./colors";
 
@@ -31,6 +32,7 @@ function TooltipBox({ active, payload, label, names }: { active?: boolean; paylo
 
 /** Tendencia diaria con tooltip; apilada para mostrar la mezcla por canal. */
 export function TrendChart({ points, keys, stacked = false, labels, height = 260 }: Props) {
+  const gid = `trend-${useId().replace(/:/g, "")}`;
   const names = (k: string) => labels?.[k] ?? channelLabel(k);
   const axis = { stroke: "var(--muted-foreground)", fontSize: 11, tickLine: false, axisLine: false } as const;
   const common = (
@@ -45,21 +47,22 @@ export function TrendChart({ points, keys, stacked = false, labels, height = 260
     <div className="space-y-3">
       <div style={{ height }} className="w-full">
         <ResponsiveContainer width="100%" height="100%">
-          {stacked ? (
-            <AreaChart data={points} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
-              {common}
+          {/* Degradado bajo cada curva: misma tinta que la línea, de visible arriba a transparente abajo. */}
+          <AreaChart data={points} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
+            <defs>
               {keys.map((k, i) => (
-                <Area key={k} type="monotone" dataKey={k} stackId="1" stroke={seriesColor(k, i)} fill={seriesColor(k, i)} fillOpacity={0.85} strokeWidth={0} isAnimationActive={false} />
+                <linearGradient key={k} id={`${gid}-${i}`} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={seriesColor(k, i)} stopOpacity={stacked ? 0.9 : keys.length > 2 ? 0.14 : 0.3} />
+                  <stop offset="100%" stopColor={seriesColor(k, i)} stopOpacity={stacked ? 0.55 : 0} />
+                </linearGradient>
               ))}
-            </AreaChart>
-          ) : (
-            <LineChart data={points} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
-              {common}
-              {keys.map((k, i) => (
-                <Line key={k} type="monotone" dataKey={k} stroke={seriesColor(k, i)} strokeWidth={2} dot={false} activeDot={{ r: 4 }} isAnimationActive={false} />
-              ))}
-            </LineChart>
-          )}
+            </defs>
+            {common}
+            {keys.map((k, i) => (
+              <Area key={k} type="monotone" dataKey={k} stackId={stacked ? "1" : undefined} stroke={seriesColor(k, i)} strokeWidth={stacked ? 0 : 2}
+                fill={`url(#${gid}-${i})`} fillOpacity={1} activeDot={stacked ? false : { r: 4 }} isAnimationActive={false} />
+            ))}
+          </AreaChart>
         </ResponsiveContainer>
       </div>
       {keys.length > 1 && (

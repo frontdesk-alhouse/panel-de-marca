@@ -31,8 +31,9 @@
  * igcomp     followers, posts_total, posts_30d, avg_interactions, engagement (semanal) dims: "site:<dominio>"
  * psi        lcp_ms, inp_ms, cls, lighthouse_seo,
  *            lighthouse_a11y (instantáneas)                   dims: "mobile:<ruta>" · "desktop:<ruta>"
+ * geo        checks_ok, checks_total (diario; meta.report = GeoReport en checks_total) dims: ""
  */
-export const SOURCE_IDS = ["ga4", "gsc", "gads", "meta", "instagram", "clarity", "gbp", "psi", "comp", "serp", "links", "maps", "igcomp", "ideas"] as const;
+export const SOURCE_IDS = ["ga4", "gsc", "gads", "meta", "instagram", "clarity", "gbp", "psi", "comp", "serp", "links", "maps", "igcomp", "ideas", "geo"] as const;
 export type SourceId = (typeof SOURCE_IDS)[number];
 
 export const SOURCE_LABELS: Record<SourceId, string> = {
@@ -50,6 +51,7 @@ export const SOURCE_LABELS: Record<SourceId, string> = {
   maps: "Google Maps (Apify)",
   igcomp: "Instagram de la competencia (Apify)",
   ideas: "Ideas de contenido",
+  geo: "Visibilidad en IA",
 };
 
 export const PAID_CHANNELS = new Set([

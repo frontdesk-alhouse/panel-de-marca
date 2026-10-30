@@ -12,6 +12,7 @@ import { mapsSource } from "./maps";
 import { igCompSource } from "./igcomp";
 import { metaSource } from "./meta";
 import { instagramSource } from "./instagram";
+import { geoSource } from "./geo";
 import type { Source } from "./types";
 
 /** Fuentes registradas; cada fase agrega las suyas. */
@@ -29,6 +30,7 @@ export const SOURCES: Record<string, Source> = {
   meta: metaSource,
   instagram: instagramSource,
   ideas: ideasSource,
+  geo: geoSource,
   mock: mockSource,
 };
 

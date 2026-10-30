@@ -16,6 +16,8 @@ import { listLeads } from "@/lib/crm/store";
 import { summarize } from "@/lib/crm/summary";
 import { loadBusiness } from "@/lib/analytics/sections/business";
 import { todayIso } from "@/lib/dates";
+import { loadGeoOverview } from "@/lib/geo/store";
+import { listChanges, scoreHistory } from "@/lib/changes/store";
 
 const MAX_LIST = 15;
 
@@ -79,6 +81,10 @@ export const SECTIONS = {
   // Métricas de negocio (win rate, CAC, ROAS, ticket, ciclo, pipeline): solo agregados, sin datos de personas.
   negocio: async () => { const b = await loadBusiness(); return { ventanaDias: b.windowDays, embudo: b.funnel, pipeline: b.pipeline, inversionAnunciosMxn: b.paidMxn, metricas: b.metrics }; },
   calificacion: async () => loadScorecard(),
+  // Visibilidad en IA: chequeo técnico de GEO y bitácora de citación (sin textos completos de respuestas).
+  visibilidad_ia: async () => { const g = await loadGeoOverview(); return { chequeo: g.latest && { fecha: g.latest.date, plataforma: g.latest.report.platform, chequeos: g.latest.report.checks.map((c) => ({ id: c.id, bien: c.ok, severidad: c.severity, detalle: c.detail })) }, indice: g.index, fuentesQueMasCitan: g.domains, datosErroneos: g.wrongFacts }; },
+  // Bitácora de cambios y calificación diaria: para ver si una subida coincide con algo que se hizo.
+  cambios: async () => { const [c, h] = await Promise.all([listChanges(180), scoreHistory(180)]); return { cambios: c.map(({ id, date, kind, area, title, detail }) => ({ id, fecha: date, origen: kind, area, titulo: title, detalle: detail })), calificacionSemanal: h.filter((_, i) => (h.length - 1 - i) % 7 === 0).slice(-15).map((x) => ({ fecha: x.date, general: x.overall })) }; },
 } as const;
 
 

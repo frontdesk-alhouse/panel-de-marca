@@ -2,16 +2,18 @@ import { randomBytes } from "node:crypto";
 import { NextResponse } from "next/server";
 import { isViewerRequest, unauthorized } from "@/lib/api-auth";
 import { isLocalMode } from "@/lib/mode";
+import { ensureGoogleClient } from "@/lib/integrations/shared-google-app";
 import { ADS_SCOPE, BASE_SCOPES, OAUTH_COOKIE, OAUTH_TTL_S, oauthClient, requestOrigin, startFlow } from "@/lib/integrations/google-oauth";
 
-/** Manda a la persona a autorizar Google con su propio cliente OAuth. Solo modo local. */
+/** Manda a la persona a autorizar Google (con la app del panel o la suya). Solo modo local. */
 export async function GET(req: Request) {
   if (!isLocalMode()) return Response.json({ error: "Solo en modo local" }, { status: 404 });
   if (!(await isViewerRequest(req))) return unauthorized();
   // Solo desde el propio panel: un link en otro sitio no arranca el permiso de Google.
   if (req.headers.get("sec-fetch-site") === "cross-site") return unauthorized();
-  if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
-    return Response.json({ error: "Primero guarda el ID y el secreto del cliente OAuth" }, { status: 400 });
+  // Tu propia app si ya la guardaste; si no, la app «Alto Dashboard» de Alto House.
+  if ((await ensureGoogleClient()) === "missing") {
+    return Response.json({ error: "No se pudo obtener la app de Google del panel. Revisa tu conexión a internet o usa tu propia app (avanzado)." }, { status: 503 });
   }
   const url = new URL(req.url);
   const origin = requestOrigin(req);

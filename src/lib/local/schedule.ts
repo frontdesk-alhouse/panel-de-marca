@@ -16,7 +16,7 @@ export interface Job {
   cronPath: string;
 }
 
-const SYNC_ORDER = ["serp", "links", "maps", "igcomp", "ideas", "comp", "ga4", "gads", "clarity", "meta", "instagram", "gsc", "psi"] as const;
+const SYNC_ORDER = ["serp", "links", "maps", "igcomp", "ideas", "comp", "ga4", "gads", "clarity", "meta", "instagram", "gsc", "psi", "geo"] as const;
 
 export const JOBS: readonly Job[] = [
   ...SYNC_ORDER.map((id): Job => ({ id, kind: "sync", cadence: "daily", cronPath: `/api/cron/sync/${id}` })),

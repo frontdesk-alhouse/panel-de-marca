@@ -10,6 +10,7 @@ import { todayIso } from "@/lib/dates";
 import { formatMoney, formatPct, formatShortDate } from "@/lib/format";
 import { rankInsights, forAnchor } from "@/lib/analytics/insights";
 import { SectionHeader } from "@/components/dash/SectionHeader";
+import { DataSources } from "@/components/dash/DataSources";
 import { WithRail } from "@/components/dash/InsightRail";
 import { Card } from "@/components/dash/Funnel";
 import { DataTable, type Row } from "@/components/dash/DataTable";
@@ -62,6 +63,7 @@ export default async function CrmPage({ searchParams }: { searchParams: Promise<
     <div className="space-y-8">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <SectionHeader title={TITLE} question={msg.pages["/crm"].question} path="/crm" />
+        <DataSources intro="Los prospectos se capturan aquí (a mano, desde el formulario o reuniones). Su canal de origen se cruza con Google Analytics, Google Ads y Meta Ads para saber qué canal trae clientes." items={[{ label: "CRM del panel", on: true }, "ga4", "gads", "meta"]} />
         <Link href="/crm/nuevo" className="h-9 inline-flex items-center rounded-md bg-primary px-4 font-mono text-[11px] uppercase text-primary-foreground hover:opacity-85">+ Nuevo prospecto</Link>
       </div>
       <MeetingInbox rows={inbox} leads={all.map((l) => ({ id: l.id, label: [l.company, l.contactName].filter(Boolean).join(" · ") || `#${l.id}` }))} />

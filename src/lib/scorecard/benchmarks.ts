@@ -47,6 +47,18 @@ export const METRICS: MetricDefinition[] = [
     source: "BrightLocal GBP Insights 2026 (vía Searchlab): ~5 % de las vistas termina en llamada, clic o ruta", asOf: AS_OF, own: false,
     ease: 2, lever: "Completar el perfil: fotos, servicios, publicaciones y reseñas recientes",
   },
+  {
+    id: "geo_tecnico", dimension: "visibilidad", label: "Chequeos técnicos de visibilidad en IA", unit: "pct",
+    direction: "up", green: 0.9, yellow: 0.7,
+    source: "Umbral propio: chequeos del skill seo-geo (bots de IA, marca visible sin JavaScript, schema, robots, sitemap)", asOf: AS_OF, own: true,
+    ease: 3, lever: "Corregir los chequeos en rojo de Visibilidad en IA: bots bloqueados, marca invisible sin JavaScript o schema de la entidad",
+  },
+  {
+    id: "citacion_ia", dimension: "visibilidad", label: "Corridas en que un asistente de IA te menciona", unit: "pct",
+    direction: "up", green: 0.5, yellow: 0.2, minSample: 9,
+    source: "Umbral propio: no hay benchmark externo serio de citación; se mide contra tu propia línea base (skill seo-geo)", asOf: AS_OF, own: true,
+    ease: 1, lever: "Responder las consultas de la batería con páginas propias que tengan datos, tablas y fecha, y conseguir menciones en las fuentes que los asistentes sí citan",
+  },
 
   // 2 · Conversión del sitio
   {

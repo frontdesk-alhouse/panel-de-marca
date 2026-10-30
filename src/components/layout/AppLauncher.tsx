@@ -1,12 +1,17 @@
 "use client";
 
-import { LayoutGrid } from "lucide-react";
+import Link from "next/link";
+import { LayoutGrid, Puzzle } from "lucide-react";
+import type { SkillId } from "@/lib/skills/catalog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useWorkspace } from "@/components/providers/WorkspaceProvider";
 import { buildPlatformGroups } from "@/lib/platforms/links";
 import { useT } from "@/i18n/client";
 
-/** Lanzador de plataformas al estilo de Google: cada cuenta a un clic, sin buscar en el historial. */
+/** Skill que ayuda a trabajar cada grupo de plataformas. */
+const GROUP_SKILL: Record<string, SkillId> = { Anuncios: "anuncios-eficiencia", "Medición": "conversion-medicion", Presencia: "seo-geo" };
+
+/** Lanzador de plataformas al estilo de Google: cada cuenta a un clic y, por grupo, el skill que ayuda a trabajarla. */
 export function AppLauncher() {
   const w = useWorkspace();
   const t = useT();
@@ -36,6 +41,16 @@ export function AppLauncher() {
                   </li>
                 ))}
               </ul>
+              {GROUP_SKILL[g.title] && (
+                <Link href={`/skills#${GROUP_SKILL[g.title]}`}
+                  className="mt-1 flex items-center gap-2 rounded-xl px-2 py-2 text-xs transition-colors hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                  <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-background"><Puzzle className="h-3.5 w-3.5" aria-hidden /></span>
+                  <span className="min-w-0">
+                    <span className="block font-medium">Skill: {t.skills.items[GROUP_SKILL[g.title]]?.name}</span>
+                    <span className="block truncate text-muted-foreground">{t.skills.items[GROUP_SKILL[g.title]]?.short}</span>
+                  </span>
+                </Link>
+              )}
             </section>
           ))}
         </nav>

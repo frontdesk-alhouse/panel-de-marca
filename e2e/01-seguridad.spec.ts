@@ -1,5 +1,11 @@
 import { expect, test } from "@playwright/test";
 
+test.beforeEach(async ({ page }) => {
+  // La guía de bienvenida ya se vio (si no, el diálogo tapa la página).
+  await page.addInitScript(() => localStorage.setItem("ah-panel-onboarding-v1", "1"));
+});
+
+
 /**
  * Sin marca configurada y sin login: el panel solo debe abrir la configuración, y solo
  * desde esta computadora. Corre primero (la base está vacía).
