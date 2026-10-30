@@ -5,7 +5,7 @@ import { money } from "@/lib/crm/validation";
 
 export const maxDuration = 300;
 
-const Body = z.object({ budget: money, notes: z.string().max(1500).optional() });
+const Body = z.object({ budget: money, notes: z.string().max(1500).optional(), goal: z.string().max(500).optional() });
 
 /** Genera el plan de medios (Opus, ~2-3 min). */
 export async function POST(req: Request) {
@@ -16,7 +16,7 @@ export async function POST(req: Request) {
   const parsed = Body.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) return Response.json({ error: "Revisa el presupuesto: solo el monto, por ejemplo 15,000" }, { status: 400 });
   try {
-    await runStrategy({ budgetMxn: parsed.data.budget, notes: parsed.data.notes });
+    await runStrategy({ budgetMxn: parsed.data.budget, notes: parsed.data.notes, goal: parsed.data.goal });
     return Response.json({ ok: true });
   } catch (e) {
     console.error("[strategy]", e);

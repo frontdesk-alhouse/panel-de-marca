@@ -8,7 +8,14 @@ import { Segmented } from "@/components/dash/Segmented";
 import { cn } from "@/lib/utils";
 
 type Stage = Strategy["embudo"][number]["etapa"];
-const STAGE: Record<Stage, string> = { reconocimiento: "Reconocimiento", consideracion: "Consideración", conversion: "Leads", relacion: "Relación" };
+/** El embudo en palabras simples: qué le pasa al cliente en cada etapa. */
+const STAGE: Record<Stage, string> = { reconocimiento: "Te conocen", consideracion: "Te comparan", conversion: "Te escriben", relacion: "Regresan y recomiendan" };
+export const STAGE_EXPLAIN: Record<Stage, string> = {
+  reconocimiento: "Gente que aún no sabe que existes empieza a verte.",
+  consideracion: "Ya te conocen y te comparan con otras opciones.",
+  conversion: "Deciden contactarte: formulario, WhatsApp o llamada.",
+  relacion: "Ya son clientes: vuelven a comprar y te recomiendan.",
+};
 const SERIES = ["var(--series-1)", "var(--series-2)", "var(--series-3)", "var(--series-4)", "var(--series-5)", "var(--series-6)", "var(--series-7)", "var(--series-8)"];
 
 /** Detalle que se abre al tocarlo: lo común a la vista, lo demás un nivel abajo. */
@@ -34,6 +41,7 @@ export function FunnelTabs({ embudo }: { embudo: Strategy["embudo"] }) {
       <Segmented label="Etapa del embudo" value={stage} onChange={setStage}
         items={embudo.map((e, i) => ({ key: e.etapa, label: `${i + 1}. ${STAGE[e.etapa]}`, meta: budget(e) ? `${formatMoney(budget(e))}/mes` : "Orgánico" }))} />
       <div key={stage} className="space-y-4 animate-in fade-in-0 duration-200 motion-reduce:animate-none">
+        <p className="text-sm text-muted-foreground">{STAGE_EXPLAIN[current.etapa]}</p>
         <div className="grid gap-2 md:grid-cols-[auto_1fr] md:gap-x-6">
           <p className="font-mono text-[11px] uppercase text-muted-foreground md:pt-1">Objetivo</p>
           <p className="max-w-[65ch] text-lg leading-snug">{current.objetivo}</p>

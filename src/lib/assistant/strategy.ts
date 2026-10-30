@@ -61,7 +61,16 @@ export async function latestStrategy() {
   if (!row) return null;
   // Estrategias guardadas antes de un cambio de esquema: se completan con los valores por defecto.
   const parsed = StoredStrategySchema.safeParse(row.output);
-  return { creado: row.createdAt, strategy: parsed.success ? parsed.data : (row.output as Strategy), input: row.inputHash };
+  // Lo que pidió la persona (meta, presupuesto, notas) se guarda junto al uso de tokens.
+  const asked = (row.usage ?? {}) as { goal?: unknown; budgetMxn?: unknown; notes?: unknown };
+  return {
+    creado: row.createdAt, strategy: parsed.success ? parsed.data : (row.output as Strategy), input: row.inputHash,
+    asked: {
+      goal: typeof asked.goal === "string" ? asked.goal : null,
+      budgetMxn: typeof asked.budgetMxn === "number" ? asked.budgetMxn : null,
+      notes: typeof asked.notes === "string" ? asked.notes : null,
+    },
+  };
 }
 
 /** El esquema completo excede el límite de gramática de salida estricta: va como JSON Schema en el prompt y se valida con zod. */
@@ -102,12 +111,14 @@ async function generateStrategy(prompt: string) {
   throw new Error("La estrategia no cumplió el formato esperado");
 }
 
-export interface StrategyInput { budgetMxn?: number | null; notes?: string | null }
+export interface StrategyInput { budgetMxn?: number | null; notes?: string | null; goal?: string | null }
 
 /** Texto del pedido de estrategia (puro: se prueba contra la versión fija). */
 export function buildStrategyPrompt(w: Workspace, input: StrategyInput, data90: readonly (readonly [string, string])[], weeklyJson: string | null): string {
   const budget = input.budgetMxn ? `Presupuesto mensual disponible para medios: $${input.budgetMxn.toLocaleString(w.locale.locale)} ${w.locale.currency}.` : "No hay presupuesto definido: propón uno mínimo viable y uno de crecimiento, y usa el mínimo en el reparto.";
   const notes = input.notes?.trim() ? `Prioridades de ${w.brand.owner}: ${input.notes.trim().slice(0, 1500)}` : "";
+  // La meta en palabras de quien la pide manda sobre todo lo demás (solo si la escribió: sin ella el pedido no cambia).
+  const goal = input.goal?.trim() ? `\n- La meta que eligió ${w.brand.owner}, en sus palabras: «${input.goal.trim().slice(0, 500)}». Todo el plan, las metas del día 90 y el titular deben servir a esa meta.` : "";
 
   const prompt = `Diseña el plan de medios de ${w.brand.name} para los próximos 90 días: desde que la marca empiece a ser reconocida en su nicho hasta generar leads calificados, con el mix de canales pagados, orgánicos y de relación.
 
@@ -118,7 +129,7 @@ Reglas:
 - Respeta lo que ya funciona y di qué dejar de hacer.
 - Escribe frases cortas y concretas: respeta el máximo de palabras de cada campo. Nada de párrafos.
 - Incluye reglas de decisión (cuándo escalar, pausar o esperar el aprendizaje de los algoritmos) y experimentos con criterio de éxito.
-- ${budget}
+- ${budget}${goal}
 ${notes}
 
 # Contexto de ${w.brand.name}
@@ -147,7 +158,7 @@ export async function runStrategy(input: StrategyInput) {
   await db.insert(analyses).values({
     kind: "strategy", periodFrom: today, periodTo: today,
     inputHash: createHash("sha256").update(prompt).digest("hex").slice(0, 32),
-    output: response.parsed_output, model: ASSISTANT_MODEL, usage: { ...response.usage, budgetMxn: input.budgetMxn ?? null, notes: input.notes ?? null },
+    output: response.parsed_output, model: ASSISTANT_MODEL, usage: { ...response.usage, budgetMxn: input.budgetMxn ?? null, notes: input.notes ?? null, goal: input.goal ?? null },
   });
   return response.parsed_output;
 }
