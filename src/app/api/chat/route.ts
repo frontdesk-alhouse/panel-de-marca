@@ -8,13 +8,14 @@ import { COPILOT_LABELS, copilotTools } from "@/lib/assistant/copilot";
 import { getViewer } from "@/auth";
 import { CHAT_MODELS } from "@/lib/assistant/weekly";
 import { todayIso } from "@/lib/dates";
+import { toApiHistory } from "@/lib/assistant/chat-history";
 
 export const maxDuration = 300;
 
-const MAX_TURNS = 40;
 const Body = z.object({
   model: z.enum(["sonnet", "opus"]).default("sonnet"),
-  messages: z.array(z.object({ role: z.enum(["user", "assistant"]), content: z.string().min(1).max(12_000) })).min(1).max(MAX_TURNS),
+  // Holgado al recibir: el historial se limpia con toApiHistory (vacíos, larguísimos, roles seguidos).
+  messages: z.array(z.object({ role: z.enum(["user", "assistant"]), content: z.string().max(200_000) })).min(1).max(400),
   /** Página que la persona tiene abierta (columna del copiloto). Solo rutas internas. */
   page: z.object({ path: z.string().regex(/^\/[a-z0-9/_-]*$/i).max(120), title: z.string().max(80) }).optional(),
 });
@@ -39,7 +40,8 @@ export async function POST(req: Request) {
   if (missing) return missing;
   if (!process.env.ANTHROPIC_API_KEY) return Response.json({ error: "Falta ANTHROPIC_API_KEY" }, { status: 503 });
   const parsed = Body.safeParse(await req.json().catch(() => null));
-  if (!parsed.success || parsed.data.messages.at(-1)?.role !== "user") return Response.json({ error: "Conversación inválida" }, { status: 400 });
+  const history = parsed.success ? toApiHistory(parsed.data.messages) : [];
+  if (!parsed.success || history.at(-1)?.role !== "user") return Response.json({ error: "Conversación inválida" }, { status: 400 });
 
   const viewer = (await getViewer())?.email ?? "desconocido";
   const client = new Anthropic();
@@ -59,7 +61,7 @@ export async function POST(req: Request) {
           tools: [...assistantTools(), ...copilotTools({ viewer, onProposal: (p) => send({ type: "proposal", id: p.id, summary: p.summary }) })],
           max_iterations: 10,
           messages: [
-            ...parsed.data.messages,
+            ...history,
             { role: "system", content: `Hoy es ${todayIso()} (zona horaria ${localeSettings().timeZone}).${pageNote(parsed.data.page)}` },
           ],
           stream: true,

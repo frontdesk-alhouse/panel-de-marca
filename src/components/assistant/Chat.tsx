@@ -2,13 +2,14 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowUp, Check, RotateCcw, X } from "lucide-react";
+import { ArrowUp, Check, Pencil, RefreshCw, RotateCcw, Square, X } from "lucide-react";
+import { toApiHistory } from "@/lib/assistant/chat-history";
 import { Markdown } from "./Markdown";
 import { cn } from "@/lib/utils";
 
 type ProposalStatus = "pending" | "applying" | "applied" | "discarded" | "error";
 interface Proposal { id: number; summary: string; status: ProposalStatus; result?: string }
-interface Msg { role: "user" | "assistant"; content: string; proposals?: Proposal[] }
+interface Msg { role: "user" | "assistant"; content: string; proposals?: Proposal[]; /** Falla de la pantalla: no viaja a la API. */ error?: boolean }
 const STORAGE_KEY = "ah-panel-chat";
 const MODEL_KEY = "ah-panel-chat-model";
 const MODELS = [{ key: "sonnet", label: "Sonnet 5.5", hint: "Rápido" }, { key: "opus", label: "Opus 5.5", hint: "Más profundo" }] as const;
@@ -37,6 +38,8 @@ export function Chat({ suggestions, initialQuestion, compact = false, page, onIn
   const [busy, setBusy] = useState(false);
   const [model, setModel] = useState<ModelKey>("sonnet");
   const end = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     // Se restaura después de hidratar (el servidor no ve localStorage); leerlo al iniciar el estado rompería la hidratación.
@@ -63,22 +66,29 @@ export function Chat({ suggestions, initialQuestion, compact = false, page, onIn
     // eslint-disable-next-line react-hooks/exhaustive-deps -- solo al llegar con una pregunta nueva
   }, [initialQuestion]);
 
-  async function ask(question: string) {
+  /** Pregunta sobre la conversación `base` (por defecto, la actual; al reintentar o editar, la recortada). */
+  async function ask(question: string, base: Msg[] = messages) {
     const q = question.trim();
     if (!q || busy) return;
-    const history: Msg[] = [...messages, { role: "user", content: q }];
+    const history: Msg[] = [...base, { role: "user", content: q }];
     setMessages([...history, { role: "assistant", content: "" }]);
     setInput("");
     setBusy(true);
     setStatus("Pensando");
     // Conserva las propuestas del copiloto: llegan a mitad de la respuesta y el texto sigue después.
     const append = (text: string) => setMessages((m) => [...m.slice(0, -1), { ...m.at(-1)!, content: m.at(-1)!.content + text }]);
+    // La falla queda marcada: se ve con «Reintentar» y no se manda en la siguiente pregunta.
+    const fail = (text: string) => setMessages((m) => [...m.slice(0, -1), { ...m.at(-1)!, content: m.at(-1)!.content ? `${m.at(-1)!.content}\n\n_${text}_` : text, error: !m.at(-1)!.content && !m.at(-1)!.proposals?.length }]);
     const addProposal = (p: Proposal) => setMessages((m) => [...m.slice(0, -1), { ...m.at(-1)!, proposals: [...(m.at(-1)!.proposals ?? []), p] }]);
     try {
-      const res = await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model, page, messages: history.slice(-40).map(({ role, content }) => ({ role, content })) }) });
+      const controller = new AbortController();
+      abortRef.current = controller;
+      const res = await fetch("/api/chat", { method: "POST", signal: controller.signal, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model, page, messages: toApiHistory(history) }) });
       if (!res.ok || !res.body) {
         const err = (await res.json().catch(() => ({}))) as { error?: string };
-        append(err.error === "Falta ANTHROPIC_API_KEY" ? "El chat aún no está conectado: falta la API key de Anthropic." : "No se pudo conectar con el asistente.");
+        fail(err.error === "Falta ANTHROPIC_API_KEY" ? "El chat aún no está conectado: falta la API key de Anthropic."
+          : res.status === 401 ? "Tu sesión venció. Recarga la página para volver a entrar."
+          : "No se pudo obtener respuesta. Toca «Reintentar».");
         return;
       }
       const reader = res.body.getReader();
@@ -100,12 +110,28 @@ export function Chat({ suggestions, initialQuestion, compact = false, page, onIn
           else if (ev.type === "proposal" && ev.id && ev.summary) addProposal({ id: ev.id, summary: ev.summary, status: "pending" });
         }
       }
-    } catch {
-      append("\n\nSe cortó la conexión. Intenta de nuevo.");
+    } catch (e) {
+      fail(e instanceof DOMException && e.name === "AbortError" ? "Detenido." : "Se cortó la conexión. Toca «Reintentar».");
     } finally {
+      abortRef.current = null;
       setBusy(false);
       setStatus(null);
     }
+  }
+
+  /** Vuelve a hacer la última pregunta (quita la respuesta que falló o se quedó trabada). */
+  function retry() {
+    const i = messages.findLastIndex((m) => m.role === "user");
+    if (i < 0 || busy) return;
+    void ask(messages[i].content, messages.slice(0, i));
+  }
+
+  /** Editar una pregunta: vuelve al cuadro de texto y la conversación se recorta desde ahí. */
+  function edit(i: number) {
+    if (busy) return;
+    setInput(messages[i].content);
+    setMessages(messages.slice(0, i));
+    requestAnimationFrame(() => inputRef.current?.focus());
   }
 
   /** «Aplicar» / «Descartar»: la única forma de que el copiloto cambie el panel. */
@@ -157,7 +183,17 @@ export function Chat({ suggestions, initialQuestion, compact = false, page, onIn
         {messages.map((m, i) => (
           <div key={i} className={cn("flex", m.role === "user" ? "justify-end" : "justify-start")}>
             {m.role === "user"
-              ? <p className="max-w-[80%] rounded-2xl rounded-br-md bg-primary px-4 py-2.5 text-[15px] text-primary-foreground">{m.content}</p>
+              ? (
+                <div className="group/u flex max-w-[80%] flex-col items-end gap-1">
+                  <p className="rounded-2xl rounded-br-md bg-primary px-4 py-2.5 text-[15px] text-primary-foreground">{m.content}</p>
+                  {!busy && (
+                    <button type="button" onClick={() => edit(i)} aria-label="Editar esta pregunta" title="Editar"
+                      className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] text-muted-foreground opacity-0 transition hover:text-foreground focus-visible:opacity-100 group-hover/u:opacity-100">
+                      <Pencil className="h-3 w-3" aria-hidden />Editar
+                    </button>
+                  )}
+                </div>
+              )
               : (
                 <div className="max-w-[92%] space-y-3">
                   {m.content ? <Markdown text={m.content} /> : null}
@@ -188,11 +224,24 @@ export function Chat({ suggestions, initialQuestion, compact = false, page, onIn
           </div>
         ))}
         {status && <p className="animate-pulse font-mono text-[11px] uppercase text-muted-foreground">{status}…</p>}
+        {/* Si se traba: detener mientras piensa; reintentar la última pregunta cuando termina o falla. */}
+        {busy ? (
+          <button type="button" onClick={() => abortRef.current?.abort()}
+            className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-muted-foreground transition hover:bg-background hover:text-foreground">
+            <Square className="h-3 w-3" aria-hidden />Detener
+          </button>
+        ) : messages.at(-1)?.role === "assistant" && (
+          <button type="button" onClick={retry}
+            className={cn("inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs transition",
+              messages.at(-1)?.error ? "bg-primary text-primary-foreground hover:opacity-90" : "text-muted-foreground hover:bg-background hover:text-foreground")}>
+            <RefreshCw className="h-3 w-3" aria-hidden />Reintentar
+          </button>
+        )}
         <div ref={end} />
       </div>
       <form onSubmit={(e) => { e.preventDefault(); void ask(input); }} className="flex shrink-0 items-end gap-2 rounded-b-2xl border-t border-border bg-card p-3">
         <label htmlFor="chat-input" className="sr-only">Pregunta</label>
-        <textarea id="chat-input" value={input} onChange={(e) => setInput(e.target.value)} rows={1} maxLength={4000}
+        <textarea id="chat-input" ref={inputRef} value={input} onChange={(e) => setInput(e.target.value)} rows={1} maxLength={4000}
           onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void ask(input); } }}
           placeholder="Pregunta algo sobre tus datos…" className="max-h-40 min-h-11 flex-1 resize-none rounded-xl bg-background px-4 py-3 text-[15px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
         <button type="submit" disabled={busy || !input.trim()} aria-label="Enviar" className="grid h-11 w-11 place-items-center rounded-xl bg-primary text-primary-foreground transition hover:opacity-85 disabled:opacity-40">

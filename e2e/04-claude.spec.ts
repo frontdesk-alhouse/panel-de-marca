@@ -162,4 +162,31 @@ test.describe("copiloto", () => {
     await expect(panel.getByText("Agregar a la competencia: Estudio Ejemplo")).toBeVisible();
     await expect(panel.getByRole("button", { name: "Aplicar" })).toBeVisible();
   });
+
+  test("si una respuesta falla, «Reintentar» vuelve a preguntar sin duplicar la pregunta; «Editar» la regresa al cuadro", async ({ page }) => {
+    let calls = 0;
+    const sent: unknown[] = [];
+    await page.route("**/api/chat", (route) => {
+      calls++;
+      sent.push(route.request().postDataJSON());
+      if (calls === 1) return route.fulfill({ status: 400, contentType: "application/json", body: JSON.stringify({ error: "Conversación inválida" }) });
+      return route.fulfill({ status: 200, contentType: "application/x-ndjson", body: JSON.stringify({ type: "text", text: "Respuesta buena." }) + "\n" + JSON.stringify({ type: "done" }) + "\n" });
+    });
+    await page.goto("/resumen");
+    await page.getByRole("button", { name: "Abrir copiloto" }).click();
+    const panel = page.getByRole("complementary", { name: "Copiloto" }).or(page.getByRole("dialog"));
+    await panel.getByLabel("Pregunta").fill("¿Cómo voy?");
+    await panel.getByRole("button", { name: "Enviar" }).click();
+    await expect(panel.getByText("No se pudo obtener respuesta")).toBeVisible();
+    await panel.getByRole("button", { name: "Reintentar" }).click();
+    await expect(panel.getByText("Respuesta buena.")).toBeVisible();
+    await expect(panel.getByText("¿Cómo voy?", { exact: true })).toHaveCount(1);
+    // El reintento no manda la falla de la pantalla como parte de la conversación.
+    expect(JSON.stringify(sent[1])).not.toContain("No se pudo obtener respuesta");
+
+    await panel.getByText("¿Cómo voy?", { exact: true }).hover();
+    await panel.getByRole("button", { name: "Editar esta pregunta" }).click();
+    await expect(panel.getByLabel("Pregunta")).toHaveValue("¿Cómo voy?");
+    await expect(panel.getByText("Respuesta buena.")).toHaveCount(0);
+  });
 });
